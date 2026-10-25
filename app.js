@@ -7,18 +7,21 @@
   'use strict';
 
   // Configure PDF.js worker if available (using Blob wrapper so it works from file:// and http://)
-  if (window.pdfjsLib) {
-    try {
-      const workerBlob = new Blob(
-        ['importScripts("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js");'],
-        { type: 'application/javascript' }
-      );
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(workerBlob);
-    } catch (_) {
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  function configurePdfJsWorker() {
+    if (window.pdfjsLib && !window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
+      try {
+        const workerBlob = new Blob(
+          ['importScripts("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js");'],
+          { type: 'application/javascript' }
+        );
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(workerBlob);
+      } catch (_) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
     }
   }
+  configurePdfJsWorker();
 
   // Paper dimensions in PDF points (1 pt = 1/72 inch)
   const PAPER_SIZES = {
@@ -112,6 +115,7 @@
 
   // Initialize UI & Event Listeners
   function init() {
+    configurePdfJsWorker();
     setupSlotListeners();
     setupBatchListeners();
     setupOptionListeners();
