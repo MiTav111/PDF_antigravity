@@ -39,9 +39,6 @@ body {
 .app-header {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 20;
 }
 
 .header-inner {
@@ -52,6 +49,24 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+}
+
+.header-graphic-banner {
+  max-width: 1460px;
+  margin: 0 auto;
+  padding: 4px 24px 18px;
+  display: flex;
+  justify-content: center;
+}
+
+.explainer-hero-img {
+  width: 100%;
+  max-width: 1200px;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
 .brand {

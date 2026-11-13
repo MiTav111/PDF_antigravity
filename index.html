@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DIN A4 PDF &amp; Bilder Zusammenfügen</title>
+  <title>Dokumente &amp; Fotos platzsparend auf DIN A4</title>
   <link rel="stylesheet" href="styles.css" />
   <!-- pdf-lib for lossless vector PDF merging & image embedding -->
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js" defer></script>
@@ -24,9 +24,6 @@
       </div>
       <div class="header-actions">
         <button id="loadDemoBtn" class="btn btn-secondary" type="button" title="Lädt Beispiel-Briefe und Beispiel-Fotos, damit Sie das Programm sofort ausprobieren können">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-          </svg>
           Beispiel ausprobieren
         </button>
         <button id="resetAllBtn" class="btn btn-ghost" type="button">
@@ -34,24 +31,22 @@
         </button>
       </div>
     </div>
-  </header>
 
-  <!-- Visual Step-by-Step Guide Banner with Uploaded Graphic -->
-  <section class="explainer-section" aria-label="Anleitung in 3 einfachen Schritten">
-    <div class="explainer-inner explainer-banner-card">
+    <!-- Uploaded Graphic directly under the Title -->
+    <div class="header-graphic-banner">
       <img
         src="anleitung.webp"
-        alt="Anleitung: 1. Dokumente & Fotos hochladen, 2. Wie groß sollen Briefe & Fotos auf dem Blatt sein?, 3. Fertige DIN-A4-Blätter prüfen & speichern"
+        alt="Dokumente & Fotos platzsparend auf DIN A4: 1. Dokumente & Fotos hochladen! 2. Wie groß sollen Briefe & Fotos auf dem Blatt sein? 3. Fertige DIN-A4-Blätter prüfen & speichern"
         class="explainer-hero-img"
       />
     </div>
-  </section>
+  </header>
 
   <main class="app-main">
     <!-- Left Column: Step 1 & Step 2 -->
     <section class="controls-column">
 
-      <!-- SCHRITT 1: Dateien auswählen -->
+      <!-- 1. Dokumente & Fotos hochladen! -->
       <div class="card">
         <div class="card-header">
           <div class="step-title-row">
@@ -63,7 +58,6 @@
           </div>
         </div>
 
-        <!-- Big Visual Dropzone -->
         <div class="batch-card" id="batchDropzone">
           <input
             type="file"
@@ -73,21 +67,9 @@
             hidden
           />
           <div class="batch-content">
-            <div class="batch-icon">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-            </div>
             <div class="batch-text">
               <strong>Hier klicken oder Dateien mit der Maus hierher ziehen</strong>
-              <span>Sie können mehrere PDFs und Fotos gleichzeitig markieren und öffnen</span>
-              <div class="supported-pills">
-                <span class="type-pill pill-doc">📄 PDF-Dokumente &amp; Briefe</span>
-                <span class="type-pill pill-img">🖼️ Fotos &amp; Bilder (JPG, PNG…)</span>
-                <span class="type-pill pill-txt">📝 Textdateien</span>
-              </div>
+              <span>Unterstützt: PDF-Dokumente (ein- oder mehrseitig), Fotos/Bilder (JPG, PNG, WebP…) &amp; Textdateien</span>
             </div>
             <button type="button" class="btn btn-primary" id="batchBrowseBtn">
               Dateien auswählen
@@ -95,11 +77,9 @@
           </div>
         </div>
 
-        <!-- Queue Header & Visual Legend -->
         <div class="queue-header">
           <div class="queue-title">
-            <strong>Ihre ausgewählten Seiten &amp; Bilder:</strong>
-            <span class="queue-hint">Tipp: Klicken Sie auf das farbige Schild einer Karte, um zwischen „Groß (Brief)“ und „Klein (Foto)“ zu wechseln.</span>
+            <strong>Hochgeladene Dokumente &amp; Fotos:</strong>
           </div>
           <div class="badge-group">
             <span class="badge" id="pdfCountBadge">0 Briefe (DIN A4)</span>
@@ -107,192 +87,78 @@
           </div>
         </div>
 
-        <!-- Empty Queue State -->
         <div id="emptyQueueState" class="empty-queue">
-          <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="12" y1="18" x2="12" y2="12"></line>
-            <line x1="9" y1="15" x2="15" y2="15"></line>
-          </svg>
           <p><strong>Noch keine Dateien ausgewählt</strong></p>
           <span>Klicken Sie oben auf <strong>„Dateien auswählen“</strong> oder rechts oben auf <strong>„Beispiel ausprobieren“</strong>.</span>
         </div>
 
-        <!-- Dynamic Grid of Uploaded Items -->
         <div id="itemsGrid" class="items-grid" hidden></div>
       </div>
 
-      <!-- SCHRITT 2: Wie soll alles auf die DIN-A4-Blätter verteilt werden? -->
+      <!-- 2. Wie groß sollen Briefe & Fotos auf dem Blatt sein? -->
       <div class="card">
         <div class="card-header">
           <div class="step-title-row">
             <span class="step-circle step-circle-purple">2</span>
             <div>
-              <h2>Schritt 2: Wie groß sollen Briefe &amp; Fotos auf dem Blatt sein?</h2>
-              <p class="card-subtext">Die Standard-Einstellung ist bereits optimal voreingestellt – Sie können sie hier jederzeit anpassen</p>
+              <h2>2. Wie groß sollen Briefe &amp; Fotos auf dem Blatt sein?</h2>
+              <p class="card-subtext">Hier können Sie einstellen, wie viele Briefe und Fotos auf ein DIN-A4-Blatt passen</p>
             </div>
           </div>
         </div>
 
-        <!-- Visual Option 1: PDF / Document pages per sheet -->
-        <div class="visual-setting-block">
-          <label class="form-label">A) Große Dokumente / PDFs: Wie viele nebeneinander auf 1 DIN-A4-Blatt?</label>
-          <div class="visual-choice-grid three-cols" id="pdfLayoutChoices">
-            <button type="button" class="visual-choice active" data-pdfs-per-page="2">
-              <svg viewBox="0 0 80 54" width="68" height="46">
-                <rect x="2" y="2" width="76" height="50" rx="4" fill="#fff" stroke="#64748b" stroke-width="1.8"/>
-                <rect x="7" y="7" width="31" height="40" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
-                <rect x="42" y="7" width="31" height="40" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
-              </svg>
-              <strong>2 nebeneinander</strong>
-              <span>Standard (gut lesbar)</span>
-            </button>
-
-            <button type="button" class="visual-choice" data-pdfs-per-page="3">
-              <svg viewBox="0 0 80 54" width="68" height="46">
-                <rect x="2" y="2" width="76" height="50" rx="4" fill="#fff" stroke="#64748b" stroke-width="1.8"/>
-                <rect x="6" y="7" width="20" height="40" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
-                <rect x="30" y="7" width="20" height="40" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
-                <rect x="54" y="7" width="20" height="40" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
-              </svg>
-              <strong>3 nebeneinander</strong>
-              <span>Etwas schmaler</span>
-            </button>
-
-            <button type="button" class="visual-choice" data-pdfs-per-page="4">
-              <svg viewBox="0 0 80 54" width="68" height="46">
-                <rect x="2" y="2" width="76" height="50" rx="4" fill="#fff" stroke="#64748b" stroke-width="1.8"/>
-                <rect x="7" y="6" width="31" height="19" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
-                <rect x="42" y="6" width="31" height="19" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
-                <rect x="7" y="29" width="31" height="19" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
-                <rect x="42" y="29" width="31" height="19" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
-              </svg>
-              <strong>4 auf 1 Blatt</strong>
-              <span>2×2 Übersicht</span>
-            </button>
-          </div>
-          <!-- Hidden select kept in sync for accessibility -->
-          <select id="pdfsPerPageSelect" class="form-select" hidden>
-            <option value="2" selected>2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-          </select>
-        </div>
-
-        <!-- Visual Option 2: Images per DIN A4 sheet -->
-        <div class="visual-setting-block">
-          <label class="form-label">B) Fotos &amp; Bilder: Wie viele sollen platzsparend auf 1 DIN-A4-Blatt passen?</label>
-          <div class="visual-choice-grid four-cols" id="imgLayoutChoices">
-            <button type="button" class="visual-choice" data-imgs-per-page="4">
-              <svg viewBox="0 0 80 54" width="64" height="44">
-                <rect x="2" y="2" width="76" height="50" rx="4" fill="#fff" stroke="#64748b" stroke-width="1.8"/>
-                <rect x="7" y="6" width="31" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
-                <rect x="42" y="6" width="31" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
-                <rect x="7" y="29" width="31" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
-                <rect x="42" y="29" width="31" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
-              </svg>
-              <strong>4 Fotos</strong>
-              <span>Mittelgroß (2×2)</span>
-            </button>
-
-            <button type="button" class="visual-choice active" data-imgs-per-page="6">
-              <svg viewBox="0 0 80 54" width="64" height="44">
-                <rect x="2" y="2" width="76" height="50" rx="4" fill="#fff" stroke="#64748b" stroke-width="1.8"/>
-                <rect x="6" y="6" width="20" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
-                <rect x="30" y="6" width="20" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
-                <rect x="54" y="6" width="20" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
-                <rect x="6" y="29" width="20" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
-                <rect x="30" y="29" width="20" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
-                <rect x="54" y="29" width="20" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
-              </svg>
-              <strong>6 Fotos</strong>
-              <span>Empfohlen (3×2)</span>
-            </button>
-
-            <button type="button" class="visual-choice" data-imgs-per-page="9">
-              <svg viewBox="0 0 80 54" width="64" height="44">
-                <rect x="2" y="2" width="76" height="50" rx="4" fill="#fff" stroke="#64748b" stroke-width="1.8"/>
-                <!-- 3x3 -->
-                <rect x="6" y="6" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
-                <rect x="30" y="6" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
-                <rect x="54" y="6" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
-                <rect x="6" y="21" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
-                <rect x="30" y="21" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
-                <rect x="54" y="21" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
-                <rect x="6" y="36" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
-                <rect x="30" y="36" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
-                <rect x="54" y="36" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
-              </svg>
-              <strong>9 Fotos</strong>
-              <span>Sehr sparsam (3×3)</span>
-            </button>
-
-            <button type="button" class="visual-choice" data-imgs-per-page="12">
-              <svg viewBox="0 0 80 54" width="64" height="44">
-                <rect x="2" y="2" width="76" height="50" rx="4" fill="#fff" stroke="#64748b" stroke-width="1.8"/>
-                <!-- 4x3 -->
-                <rect x="6" y="6" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
-                <rect x="23.5" y="6" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
-                <rect x="41" y="6" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
-                <rect x="58.5" y="6" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
-                <rect x="6" y="21" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
-                <rect x="23.5" y="21" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
-                <rect x="41" y="21" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
-                <rect x="58.5" y="21" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
-                <rect x="6" y="36" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
-                <rect x="23.5" y="36" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
-                <rect x="41" y="36" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
-                <rect x="58.5" y="36" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
-              </svg>
-              <strong>12 Fotos</strong>
-              <span>Mini-Bilder (4×3)</span>
-            </button>
-          </div>
-          <select id="imagesPerPageSelect" class="form-select" hidden>
-            <option value="4">4</option>
-            <option value="6" selected>6</option>
-            <option value="8">8</option>
-            <option value="9">9</option>
-            <option value="12">12</option>
-            <option value="2">2</option>
-          </select>
-        </div>
-
         <div class="options-grid">
-          <!-- Free space behavior -->
           <div class="form-group">
-            <label class="form-label" for="packModeSelect">Wenn auf dem letzten Brief-Blatt noch eine Hälfte frei ist:</label>
+            <label class="form-label" for="pdfsPerPageSelect">Briefe / PDFs pro DIN-A4-Blatt</label>
+            <select id="pdfsPerPageSelect" class="form-select">
+              <option value="2" selected>2 Briefe nebeneinander auf 1 DIN A4 (Standard)</option>
+              <option value="3">3 Briefe nebeneinander auf 1 DIN A4</option>
+              <option value="4">4 Briefe (2×2) auf 1 DIN A4</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="imagesPerPageSelect">Fotos pro DIN-A4-Blatt (Platzsparend)</label>
+            <select id="imagesPerPageSelect" class="form-select">
+              <option value="4">4 Fotos pro DIN A4 (2×2 Raster)</option>
+              <option value="6" selected>6 Fotos pro DIN A4 (3×2 Raster — Empfohlen)</option>
+              <option value="8">8 Fotos pro DIN A4 (4×2 Raster — Kompakt)</option>
+              <option value="9">9 Fotos pro DIN A4 (3×3 Raster — Sehr sparsam)</option>
+              <option value="12">12 Fotos pro DIN A4 (4×3 Raster — Mini-Bilder)</option>
+              <option value="2">2 Fotos pro DIN A4 (Groß nebeneinander)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="packModeSelect">Freien Platz auf dem Blatt nutzen</label>
             <select id="packModeSelect" class="form-select">
               <option value="pack-free-half" selected>Freie Blatthälfte sofort für Fotos mitbenutzen (spart Papier)</option>
               <option value="separate-page">Fotos immer auf einem neuen DIN-A4-Blatt beginnen</option>
             </select>
           </div>
 
-          <!-- Image Scaling Mode -->
           <div class="form-group">
-            <label class="form-label" for="imageFitSelect">Wie sollen Fotos eingepasst werden?</label>
+            <label class="form-label" for="imageFitSelect">Foto-Anpassung</label>
             <select id="imageFitSelect" class="form-select">
               <option value="contain" selected>Ganzes Foto zeigen (nichts abschneiden)</option>
-              <option value="cover">Kästchen komplett ausfüllen (Ränder beschneiden)</option>
+              <option value="cover">Kästchen komplett ausfüllen (Ränder zuschneiden)</option>
             </select>
           </div>
 
-          <!-- Margin & Cut Lines -->
           <div class="form-group full-width">
-            <label class="form-label" for="marginSelect">Abstand zum Blattrand &amp; Extras:</label>
+            <label class="form-label" for="marginSelect">Seitenrand &amp; Hilfslinien</label>
             <div class="inline-controls">
               <select id="marginSelect" class="form-select">
-                <option value="0">Kein Rand (0 mm — bis zur Kante)</option>
+                <option value="0">Kein Rand (0 mm — Randlos)</option>
                 <option value="14" selected>Normaler Druckrand (5 mm — Empfohlen)</option>
-                <option value="24">Breiterer Rand (8.5 mm)</option>
-                <option value="36">Großer Rand zum Abheften (13 mm)</option>
+                <option value="24">Mittlerer Rand (8.5 mm)</option>
+                <option value="36">Großer Rand (13 mm)</option>
               </select>
-              <label class="checkbox-label" title="Zeichnet feine gestrichelte Linien zwischen den Seiten zum Schneiden oder Falten">
+              <label class="checkbox-label">
                 <input type="checkbox" id="showGuidesCheckbox" checked />
                 <span>Trennlinien einzeichnen</span>
               </label>
-              <label class="checkbox-label" title="Schreibt den Dateinamen klein unter jedes Foto">
+              <label class="checkbox-label">
                 <input type="checkbox" id="showCaptionsCheckbox" />
                 <span>Dateinamen unter Fotos</span>
               </label>
@@ -302,28 +168,23 @@
       </div>
     </section>
 
-    <!-- Right Column: SCHRITT 3 — Vorschau & Speichern/Drucken -->
+    <!-- Right Column: 3. Fertige DIN-A4-Blätter prüfen & speichern -->
     <section class="preview-column">
       <div class="card preview-card">
         <div class="preview-header">
           <div class="step-title-row">
             <span class="step-circle step-circle-green">3</span>
             <div>
-              <h2>Schritt 3: Fertige DIN-A4-Blätter prüfen &amp; speichern</h2>
+              <h2>3. Fertige DIN-A4-Blätter prüfen &amp; speichern</h2>
               <p class="preview-subtitle" id="previewDimText">So sehen Ihre fertigen DIN-A4-Seiten beim Ausdrucken aus</p>
             </div>
           </div>
           <div class="preview-actions">
             <button id="downloadPdfBtn" class="btn btn-primary btn-lg" type="button">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
               Fertiges PDF speichern
             </button>
             <button id="openPdfTabBtn" class="btn btn-outline" type="button" title="Öffnet das fertige PDF in einem neuen Browser-Tab, damit Sie es direkt ausdrucken können">
-              🖨️ Zum Drucken öffnen
+              Zum Drucken öffnen
             </button>
           </div>
         </div>
