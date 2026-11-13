@@ -1,12 +1,13 @@
 /**
- * PDF 2-Up / 3-Up & Backside Image Studio
- * Combines 3 PDF pages onto 1 page (scaled down) and places an uploaded image on the backside (Page 2).
+ * Dokumente & Fotos platzsparend auf DIN A4
+ * - Bis zu 20+ PDFs, Bilder oder Textdateien auswählen
+ * - Legt je 2 DIN-A4-Seiten nebeneinander auf 1 DIN-A4-Blatt
+ * - Gruppiert Fotos platzsparend im Raster auf DIN A4
  */
 
 (function () {
   'use strict';
 
-  // Configure PDF.js worker if available (using Blob wrapper so it works from file:// and http://)
   function configurePdfJsWorker() {
     if (window.pdfjsLib && !window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
       try {
@@ -23,204 +24,65 @@
   }
   configurePdfJsWorker();
 
-  // Paper dimensions in PDF points (1 pt = 1/72 inch)
-  const PAPER_SIZES = {
-    A4: { width: 841.89, height: 595.28 },     // Landscape A4 (297 x 210 mm)
-    LETTER: { width: 792.0, height: 612.0 }    // Landscape US Letter (11 x 8.5 in)
-  };
+  // DIN A4 Landscape dimensions in PDF points (297 x 210 mm)
+  const A4_LANDSCAPE = { width: 841.89, height: 595.28 };
 
-  // Application State
+  let nextItemId = 1;
+
   const state = {
-    pdfSlots: [
-      createEmptyPdfSlot(0),
-      createEmptyPdfSlot(1),
-      createEmptyPdfSlot(2)
-    ],
-    imageSlot: {
-      hasImage: false,
-      fileName: '',
-      imgElement: null,
-      rotation: 0 // 0, 90, 180, 270
-    },
-    layoutMode: 'three-up-landscape', // 'three-up-landscape' | 'two-up-duplex' | 'three-up-portrait'
-    threeUpBackMode: 'full',          // 'full' | 'repeat-3'
-    backSideOrder: 'pdf3-left-img-right', // 'pdf3-left-img-right' | 'img-left-pdf3-right'
-    imageFit: 'contain',              // 'contain' | 'cover' | 'stretch'
-    paperSize: 'A4',                  // 'A4' | 'LETTER'
-    marginPt: 14,                     // Margin in PDF points
-    showGuides: true
+    items: [],
+    pdfsPerPage: 2,              // 2 DIN A4 pages horizontally on 1 DIN A4
+    imagesPerPage: 6,            // 4, 6, 8, 9, 12, or 2 images per DIN A4 page
+    packMode: 'pack-free-half',  // 'pack-free-half' | 'separate-page'
+    imageFit: 'contain',         // 'contain' | 'cover'
+    marginPt: 14,                // Margin in points (~5mm)
+    showGuides: true,
+    showCaptions: false
   };
 
-  function createEmptyPdfSlot(index) {
-    return {
-      index,
-      hasFile: false,
-      fileName: '',
-      pdfBytes: null,
-      pdfJsDoc: null,
-      pageIndex: 0,
-      pageCount: 1,
-      pageCanvas: null,
-      pageWidthPt: 595.28,
-      pageHeightPt: 841.89
-    };
-  }
-
-  // DOM Elements
   const els = {
     batchDropzone: document.getElementById('batchDropzone'),
     batchFileInput: document.getElementById('batchFileInput'),
     batchBrowseBtn: document.getElementById('batchBrowseBtn'),
-    uploadStatusBadge: document.getElementById('uploadStatusBadge'),
     loadDemoBtn: document.getElementById('loadDemoBtn'),
     resetAllBtn: document.getElementById('resetAllBtn'),
 
-    // Image slot
-    slotCardImage: document.getElementById('slotCardImage'),
-    imageFileInput: document.getElementById('imageFileInput'),
-    imageDrop: document.getElementById('imageDrop'),
-    imageEmpty: document.getElementById('imageEmpty'),
-    imagePreviewWrap: document.getElementById('imagePreviewWrap'),
-    imageThumb: document.getElementById('imageThumb'),
-    imageFooter: document.getElementById('imageFooter'),
-    imageFileName: document.getElementById('imageFileName'),
-    clearImageBtn: document.getElementById('clearImageBtn'),
-    rotateImageBtn: document.getElementById('rotateImageBtn'),
-    slotBadgeImage: document.getElementById('slotBadgeImage'),
+    pdfCountBadge: document.getElementById('pdfCountBadge'),
+    imgCountBadge: document.getElementById('imgCountBadge'),
+    emptyQueueState: document.getElementById('emptyQueueState'),
+    itemsGrid: document.getElementById('itemsGrid'),
 
-    // Layout & options
-    layoutRadios: document.querySelectorAll('input[name="layoutMode"]'),
-    layoutOpt3Up: document.getElementById('layoutOpt3Up'),
-    layoutOpt2Up: document.getElementById('layoutOpt2Up'),
-    layoutOpt3UpPortrait: document.getElementById('layoutOpt3UpPortrait'),
-    twoUpBackGroup: document.getElementById('twoUpBackGroup'),
-    threeUpBackGroup: document.getElementById('threeUpBackGroup'),
-    backSideOrder: document.getElementById('backSideOrder'),
-    threeUpBackMode: document.getElementById('threeUpBackMode'),
+    pdfLayoutChoices: document.querySelectorAll('#pdfLayoutChoices .visual-choice'),
+    imgLayoutChoices: document.querySelectorAll('#imgLayoutChoices .visual-choice'),
+    imagesPerPageSelect: document.getElementById('imagesPerPageSelect'),
+    packModeSelect: document.getElementById('packModeSelect'),
+    pdfsPerPageSelect: document.getElementById('pdfsPerPageSelect'),
     imageFitSelect: document.getElementById('imageFitSelect'),
-    paperSizeSelect: document.getElementById('paperSizeSelect'),
     marginSelect: document.getElementById('marginSelect'),
     showGuidesCheckbox: document.getElementById('showGuidesCheckbox'),
+    showCaptionsCheckbox: document.getElementById('showCaptionsCheckbox'),
 
-    // Preview & actions
-    frontSheetCanvas: document.getElementById('frontSheetCanvas'),
-    backSheetCanvas: document.getElementById('backSheetCanvas'),
-    frontMetaLabel: document.getElementById('frontMetaLabel'),
-    backMetaLabel: document.getElementById('backMetaLabel'),
     previewDimText: document.getElementById('previewDimText'),
     downloadPdfBtn: document.getElementById('downloadPdfBtn'),
     openPdfTabBtn: document.getElementById('openPdfTabBtn'),
-    statusBanner: document.getElementById('statusBanner')
+    statusBanner: document.getElementById('statusBanner'),
+    sheetsContainer: document.getElementById('sheetsContainer')
   };
 
-  // Initialize UI & Event Listeners
   function init() {
     configurePdfJsWorker();
-    setupSlotListeners();
-    setupBatchListeners();
+    setupUploadListeners();
     setupOptionListeners();
     setupActionListeners();
-    updateSlotBadgesAndLabels();
-    renderLiveSheets();
+    renderAll();
   }
 
-  function setupSlotListeners() {
-    for (let i = 0; i < 3; i++) {
-      const fileInput = document.getElementById(`fileInput${i}`);
-      const slotDrop = document.getElementById(`slotDrop${i}`);
-      const slotCard = document.getElementById(`slotCard${i}`);
-      const clearBtn = slotCard.querySelector(`[data-clear-slot="${i}"]`);
-
-      slotDrop.addEventListener('click', () => fileInput.click());
-
-      fileInput.addEventListener('change', async (e) => {
-        if (e.target.files && e.target.files[0]) {
-          await handlePdfFileUpload(i, e.target.files[0], true);
-          fileInput.value = '';
-        }
-      });
-
-      // Drag and drop on individual PDF slot
-      slotCard.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        slotCard.classList.add('dragover');
-      });
-      slotCard.addEventListener('dragleave', () => {
-        slotCard.classList.remove('dragover');
-      });
-      slotCard.addEventListener('drop', async (e) => {
-        e.preventDefault();
-        slotCard.classList.remove('dragover');
-        const files = Array.from(e.dataTransfer.files || []);
-        const pdfFile = files.find((f) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
-        if (pdfFile) {
-          await handlePdfFileUpload(i, pdfFile, true);
-        } else if (files[0] && files[0].type.startsWith('image/')) {
-          await handleImageFileUpload(files[0]);
-        }
-      });
-
-      clearBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        clearPdfSlot(i);
-      });
-    }
-
-    // Page navigation buttons inside slots
-    document.querySelectorAll('.page-btn[data-page-dir]').forEach((btn) => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const slotIdx = parseInt(btn.getAttribute('data-slot'), 10);
-        const dir = parseInt(btn.getAttribute('data-page-dir'), 10);
-        await changeSlotPage(slotIdx, dir);
-      });
-    });
-
-    // Image slot events
-    els.imageDrop.addEventListener('click', () => els.imageFileInput.click());
-    els.imageFileInput.addEventListener('change', async (e) => {
-      if (e.target.files && e.target.files[0]) {
-        await handleImageFileUpload(e.target.files[0]);
-        els.imageFileInput.value = '';
-      }
-    });
-
-    els.slotCardImage.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      els.slotCardImage.classList.add('dragover');
-    });
-    els.slotCardImage.addEventListener('dragleave', () => {
-      els.slotCardImage.classList.remove('dragover');
-    });
-    els.slotCardImage.addEventListener('drop', async (e) => {
-      e.preventDefault();
-      els.slotCardImage.classList.remove('dragover');
-      const files = Array.from(e.dataTransfer.files || []);
-      const imgFile = files.find((f) => f.type.startsWith('image/'));
-      if (imgFile) {
-        await handleImageFileUpload(imgFile);
-      }
-    });
-
-    els.clearImageBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      clearImageSlot();
-    });
-
-    els.rotateImageBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (!state.imageSlot.hasImage) return;
-      state.imageSlot.rotation = (state.imageSlot.rotation + 90) % 360;
-      els.imageThumb.style.transform = `rotate(${state.imageSlot.rotation}deg)`;
-      renderLiveSheets();
-    });
-  }
-
-  function setupBatchListeners() {
+  function setupUploadListeners() {
     els.batchDropzone.addEventListener('click', (e) => {
       if (e.target === els.batchBrowseBtn) return;
       els.batchFileInput.click();
     });
+
     els.batchBrowseBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       els.batchFileInput.click();
@@ -228,7 +90,7 @@
 
     els.batchFileInput.addEventListener('change', async (e) => {
       if (e.target.files && e.target.files.length > 0) {
-        await handleBatchFiles(Array.from(e.target.files));
+        await handleUploadedFiles(Array.from(e.target.files));
         els.batchFileInput.value = '';
       }
     });
@@ -237,512 +99,744 @@
       e.preventDefault();
       els.batchDropzone.classList.add('dragover');
     });
+
     els.batchDropzone.addEventListener('dragleave', () => {
       els.batchDropzone.classList.remove('dragover');
     });
+
     els.batchDropzone.addEventListener('drop', async (e) => {
       e.preventDefault();
       els.batchDropzone.classList.remove('dragover');
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        await handleBatchFiles(Array.from(e.dataTransfer.files));
+        await handleUploadedFiles(Array.from(e.dataTransfer.files));
       }
     });
   }
 
   function setupOptionListeners() {
-    els.layoutRadios.forEach((radio) => {
-      radio.addEventListener('change', () => {
-        if (radio.checked) {
-          state.layoutMode = radio.value;
-          els.layoutOpt3Up.classList.toggle('active', state.layoutMode === 'three-up-landscape');
-          els.layoutOpt2Up.classList.toggle('active', state.layoutMode === 'two-up-duplex');
-          els.layoutOpt3UpPortrait.classList.toggle('active', state.layoutMode === 'three-up-portrait');
-
-          const isTwoUp = state.layoutMode === 'two-up-duplex';
-          els.twoUpBackGroup.hidden = !isTwoUp;
-          els.threeUpBackGroup.hidden = isTwoUp;
-
-          updateSlotBadgesAndLabels();
-          renderLiveSheets();
-        }
+    // Visual buttons for PDFs per page
+    els.pdfLayoutChoices.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const val = parseInt(btn.getAttribute('data-pdfs-per-page'), 10) || 2;
+        state.pdfsPerPage = val;
+        if (els.pdfsPerPageSelect) els.pdfsPerPageSelect.value = String(val);
+        els.pdfLayoutChoices.forEach((b) =>
+          b.classList.toggle('active', b === btn)
+        );
+        renderQueue();
+        renderSheetsPreview();
       });
     });
 
-    els.backSideOrder.addEventListener('change', () => {
-      state.backSideOrder = els.backSideOrder.value;
-      updateSlotBadgesAndLabels();
-      renderLiveSheets();
+    // Visual buttons for Images per page
+    els.imgLayoutChoices.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const val = parseInt(btn.getAttribute('data-imgs-per-page'), 10) || 6;
+        state.imagesPerPage = val;
+        if (els.imagesPerPageSelect) els.imagesPerPageSelect.value = String(val);
+        els.imgLayoutChoices.forEach((b) =>
+          b.classList.toggle('active', b === btn)
+        );
+        renderSheetsPreview();
+      });
     });
 
-    els.threeUpBackMode.addEventListener('change', () => {
-      state.threeUpBackMode = els.threeUpBackMode.value;
-      updateSlotBadgesAndLabels();
-      renderLiveSheets();
+    if (els.imagesPerPageSelect) {
+      els.imagesPerPageSelect.addEventListener('change', () => {
+        state.imagesPerPage = parseInt(els.imagesPerPageSelect.value, 10) || 6;
+        els.imgLayoutChoices.forEach((b) =>
+          b.classList.toggle(
+            'active',
+            parseInt(b.getAttribute('data-imgs-per-page'), 10) === state.imagesPerPage
+          )
+        );
+        renderSheetsPreview();
+      });
+    }
+
+    if (els.pdfsPerPageSelect) {
+      els.pdfsPerPageSelect.addEventListener('change', () => {
+        state.pdfsPerPage = parseInt(els.pdfsPerPageSelect.value, 10) || 2;
+        els.pdfLayoutChoices.forEach((b) =>
+          b.classList.toggle(
+            'active',
+            parseInt(b.getAttribute('data-pdfs-per-page'), 10) === state.pdfsPerPage
+          )
+        );
+        renderQueue();
+        renderSheetsPreview();
+      });
+    }
+
+    els.packModeSelect.addEventListener('change', () => {
+      state.packMode = els.packModeSelect.value;
+      renderSheetsPreview();
     });
 
     els.imageFitSelect.addEventListener('change', () => {
       state.imageFit = els.imageFitSelect.value;
-      renderLiveSheets();
-    });
-
-    els.paperSizeSelect.addEventListener('change', () => {
-      state.paperSize = els.paperSizeSelect.value;
-      updateSlotBadgesAndLabels();
-      renderLiveSheets();
+      renderSheetsPreview();
     });
 
     els.marginSelect.addEventListener('change', () => {
       state.marginPt = parseFloat(els.marginSelect.value) || 0;
-      renderLiveSheets();
+      renderSheetsPreview();
     });
 
     els.showGuidesCheckbox.addEventListener('change', () => {
       state.showGuides = els.showGuidesCheckbox.checked;
-      renderLiveSheets();
+      renderSheetsPreview();
+    });
+
+    els.showCaptionsCheckbox.addEventListener('change', () => {
+      state.showCaptions = els.showCaptionsCheckbox.checked;
+      renderSheetsPreview();
     });
   }
 
   function setupActionListeners() {
     els.loadDemoBtn.addEventListener('click', loadSampleDemo);
-    els.resetAllBtn.addEventListener('click', resetAll);
+    els.resetAllBtn.addEventListener('click', () => {
+      state.items = [];
+      hideStatus();
+      renderAll();
+    });
     els.downloadPdfBtn.addEventListener('click', () => exportCombinedPdf(false));
     els.openPdfTabBtn.addEventListener('click', () => exportCombinedPdf(true));
   }
 
-  // Handle batch file upload (1 multi-page PDF or multiple PDFs + image)
-  async function handleBatchFiles(files) {
-    const pdfFiles = files.filter(
-      (f) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
-    );
-    const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+  // Process any number of uploaded files (PDFs, images, text/HTML/CSV/JSON files)
+  async function handleUploadedFiles(fileList) {
+    hideStatus();
+    let addedPages = 0;
+    let addedImages = 0;
+    let errors = [];
 
-    if (imageFiles.length > 0) {
-      await handleImageFileUpload(imageFiles[0]);
+    for (const file of fileList) {
+      const lower = file.name.toLowerCase();
+      try {
+        if (file.type === 'application/pdf' || lower.endsWith('.pdf')) {
+          const count = await addPdfFileItems(file);
+          addedPages += count;
+        } else if (
+          file.type.startsWith('image/') ||
+          /\.(jpg|jpeg|png|webp|gif|svg|bmp|avif|ico)$/i.test(lower)
+        ) {
+          await addImageFileItem(file);
+          addedImages++;
+        } else if (
+          file.type.startsWith('text/') ||
+          /\.(txt|csv|md|html|htm|json|xml|log)$/i.test(lower)
+        ) {
+          await addTextFileItem(file);
+          addedPages++;
+        } else {
+          try {
+            await addImageFileItem(file);
+            addedImages++;
+          } catch (_) {
+            await addTextFileItem(file);
+            addedPages++;
+          }
+        }
+      } catch (err) {
+        console.error('Fehler beim Lesen der Datei:', file.name, err);
+        errors.push(file.name);
+      }
     }
 
-    if (pdfFiles.length === 1) {
-      // Load into slot 0, and if it has multiple pages, auto-populate slots 1 and 2
-      await handlePdfFileUpload(0, pdfFiles[0], true, true);
-    } else if (pdfFiles.length > 1) {
-      for (let i = 0; i < Math.min(3, pdfFiles.length); i++) {
-        await handlePdfFileUpload(i, pdfFiles[i], false, false);
-      }
+    renderAll();
+
+    if (errors.length > 0) {
+      showStatus(
+        `Hinweis: Einige Dateien konnten nicht gelesen werden (${errors.join(', ')}). Alle übrigen Dateien wurden hinzugefügt.`,
+        true
+      );
+    } else if (addedPages > 0 || addedImages > 0) {
+      const parts = [];
+      if (addedPages > 0) parts.push(`${addedPages} Dokument-Seite(n)`);
+      if (addedImages > 0) parts.push(`${addedImages} Foto(s)/Bild(er)`);
+      showStatus(`Fertig! ${parts.join(' und ')} wurden hinzugefügt. Rechts sehen Sie sofort die fertige Vorschau.`);
     }
   }
 
-  // Load a PDF file into a specific slot
-  async function handlePdfFileUpload(slotIdx, file, allowAutoFillOtherSlots = false, forceAutoFill = false) {
-    try {
-      hideStatus();
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfBytes = new Uint8Array(arrayBuffer);
-
-      await loadPdfBytesIntoSlot(slotIdx, pdfBytes, file.name, 0);
-
-      // If this PDF has >= 2 pages and the other slots are empty (or batch drop), auto-fill pages 2 & 3!
-      const pageCount = state.pdfSlots[slotIdx].pageCount;
-      const otherSlotsEmpty = !state.pdfSlots[1].hasFile && !state.pdfSlots[2].hasFile;
-      if (slotIdx === 0 && pageCount >= 2 && (forceAutoFill || (allowAutoFillOtherSlots && otherSlotsEmpty))) {
-        if (pageCount >= 2) {
-          await loadPdfBytesIntoSlot(1, pdfBytes.slice(), file.name, 1);
-        }
-        if (pageCount >= 3) {
-          await loadPdfBytesIntoSlot(2, pdfBytes.slice(), file.name, 2);
-        }
-        showStatus(`Seiten 1–${Math.min(3, pageCount)} aus „${file.name}“ in PDF-Bereich 1–${Math.min(3, pageCount)} geladen.`);
-      }
-
-      updateUploadProgress();
-      renderLiveSheets();
-    } catch (err) {
-      console.error('Fehler beim Laden des PDFs:', err);
-      showStatus(`Die PDF-Datei „${file.name}“ konnte nicht gelesen werden. Bitte stellen Sie sicher, dass es sich um eine gültige PDF-Datei handelt.`, true);
-    }
+  async function addPdfFileItems(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdfBytes = new Uint8Array(arrayBuffer);
+    return await addPdfBytesItems(pdfBytes, file.name);
   }
 
-  async function loadPdfBytesIntoSlot(slotIdx, pdfBytes, fileName, initialPageIndex = 0) {
-    const slot = state.pdfSlots[slotIdx];
-    slot.pdfBytes = pdfBytes;
-    slot.fileName = fileName;
-    slot.hasFile = true;
-    slot.pageIndex = initialPageIndex;
-    slot.pageCount = 1;
+  async function addPdfBytesItems(pdfBytes, fileName) {
+    configurePdfJsWorker();
+    let numPages = 1;
+    let pdfJsDoc = null;
 
-    // Parse with pdf.js for visual preview
     if (window.pdfjsLib) {
       const loadingTask = window.pdfjsLib.getDocument({ data: pdfBytes.slice() });
-      slot.pdfJsDoc = await loadingTask.promise;
-      slot.pageCount = slot.pdfJsDoc.numPages;
-      slot.pageIndex = Math.min(initialPageIndex, slot.pageCount - 1);
-      await renderSlotThumbnail(slotIdx);
+      pdfJsDoc = await loadingTask.promise;
+      numPages = pdfJsDoc.numPages;
     } else if (window.PDFLib) {
       const doc = await window.PDFLib.PDFDocument.load(pdfBytes);
-      slot.pageCount = doc.getPageCount();
-      slot.pageIndex = Math.min(initialPageIndex, slot.pageCount - 1);
-      const page = doc.getPage(slot.pageIndex);
-      const { width, height } = page.getSize();
-      slot.pageWidthPt = width;
-      slot.pageHeightPt = height;
-      renderFallbackSlotThumbnail(slotIdx);
-    } else {
-      renderFallbackSlotThumbnail(slotIdx);
+      numPages = doc.getPageCount();
     }
 
-    updateSlotDom(slotIdx);
+    for (let p = 0; p < numPages; p++) {
+      let previewCanvas;
+      if (pdfJsDoc) {
+        const page = await pdfJsDoc.getPage(p + 1);
+        const unscaled = page.getViewport({ scale: 1 });
+        const scale = Math.min(2.0, 1100 / Math.max(unscaled.width, unscaled.height));
+        const viewport = page.getViewport({ scale });
+        previewCanvas = document.createElement('canvas');
+        previewCanvas.width = Math.round(viewport.width);
+        previewCanvas.height = Math.round(viewport.height);
+        const ctx = previewCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+        await page.render({ canvasContext: ctx, viewport }).promise;
+      } else {
+        previewCanvas = createFallbackPdfCanvas(fileName, p + 1, numPages);
+      }
+
+      const label = numPages > 1 ? `${fileName} (S. ${p + 1}/${numPages})` : fileName;
+      state.items.push({
+        id: nextItemId++,
+        kind: 'doc',
+        sourceType: 'pdf',
+        label,
+        fileName,
+        pdfBytes: pdfBytes.slice(),
+        pageIndex: p,
+        previewCanvas,
+        rotation: 0
+      });
+    }
+
+    return numPages;
   }
 
-  async function renderSlotThumbnail(slotIdx) {
-    const slot = state.pdfSlots[slotIdx];
-    if (!slot.pdfJsDoc) return;
+  async function addImageFileItem(file) {
+    const dataUrl = await readFileAsDataURL(file);
+    const img = await loadImageElement(dataUrl);
+    const canvas = document.createElement('canvas');
+    const maxDim = 1400;
+    const w = img.naturalWidth || img.width || 800;
+    const h = img.naturalHeight || img.height || 600;
+    const scale = Math.min(1, maxDim / Math.max(w, h));
+    canvas.width = Math.max(1, Math.round(w * scale));
+    canvas.height = Math.max(1, Math.round(h * scale));
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-    const page = await slot.pdfJsDoc.getPage(slot.pageIndex + 1);
-    const unscaledViewport = page.getViewport({ scale: 1 });
-    slot.pageWidthPt = unscaledViewport.width;
-    slot.pageHeightPt = unscaledViewport.height;
-
-    // Render high-res offscreen canvas for clean sheet preview & fallback export
-    const targetScale = Math.min(2.2, 1200 / Math.max(unscaledViewport.width, unscaledViewport.height));
-    const viewport = page.getViewport({ scale: targetScale });
-
-    const offCanvas = document.createElement('canvas');
-    offCanvas.width = Math.round(viewport.width);
-    offCanvas.height = Math.round(viewport.height);
-    const ctx = offCanvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, offCanvas.width, offCanvas.height);
-
-    await page.render({ canvasContext: ctx, viewport }).promise;
-    slot.pageCanvas = offCanvas;
-
-    // Copy to slot thumbnail canvas
-    const thumbCanvas = document.getElementById(`slotCanvas${slotIdx}`);
-    thumbCanvas.width = offCanvas.width;
-    thumbCanvas.height = offCanvas.height;
-    const thumbCtx = thumbCanvas.getContext('2d');
-    thumbCtx.drawImage(offCanvas, 0, 0);
+    state.items.push({
+      id: nextItemId++,
+      kind: 'img',
+      sourceType: 'image',
+      label: file.name,
+      fileName: file.name,
+      pdfBytes: null,
+      pageIndex: 0,
+      previewCanvas: canvas,
+      rotation: 0
+    });
   }
 
-  function renderFallbackSlotThumbnail(slotIdx) {
-    const slot = state.pdfSlots[slotIdx];
-    const offCanvas = document.createElement('canvas');
-    offCanvas.width = 420;
-    offCanvas.height = 594;
-    const ctx = offCanvas.getContext('2d');
+  async function addTextFileItem(file) {
+    const text = await file.text();
+    const canvas = renderTextToA4Canvas(file.name, text);
+    state.items.push({
+      id: nextItemId++,
+      kind: 'doc',
+      sourceType: 'text',
+      label: file.name,
+      fileName: file.name,
+      pdfBytes: null,
+      pageIndex: 0,
+      previewCanvas: canvas,
+      rotation: 0
+    });
+  }
+
+  function renderTextToA4Canvas(fileName, rawText) {
+    const c = document.createElement('canvas');
+    c.width = 794;
+    c.height = 1123;
+    const ctx = c.getContext('2d');
+
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, offCanvas.width, offCanvas.height);
+    ctx.fillRect(0, 0, c.width, c.height);
+
+    ctx.fillStyle = '#eff6ff';
+    ctx.fillRect(40, 40, c.width - 80, 64);
+    ctx.strokeStyle = '#bfdbfe';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(40, 40, c.width - 80, c.height - 80);
+
+    ctx.fillStyle = '#1e3a8a';
+    ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillText(fileName, 60, 78);
+
+    const cleanText = rawText.replace(/<[^>]*>/g, ' ').replace(/\r\n/g, '\n');
+    const lines = cleanText.split('\n');
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '15px ui-monospace, SFMono-Regular, Menlo, monospace';
+
+    let y = 136;
+    const maxW = c.width - 120;
+    for (const line of lines) {
+      if (y > c.height - 65) break;
+      const words = line.split(/\s+/);
+      let current = '';
+      for (const word of words) {
+        const test = current ? `${current} ${word}` : word;
+        if (ctx.measureText(test).width > maxW && current) {
+          ctx.fillText(current, 60, y);
+          y += 22;
+          current = word;
+          if (y > c.height - 65) break;
+        } else {
+          current = test;
+        }
+      }
+      if (y <= c.height - 65) {
+        ctx.fillText(current, 60, y);
+        y += 22;
+      }
+    }
+    return c;
+  }
+
+  function createFallbackPdfCanvas(fileName, pageNum, totalPages) {
+    const c = document.createElement('canvas');
+    c.width = 595;
+    c.height = 842;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, c.width, c.height);
     ctx.strokeStyle = '#94a3b8';
     ctx.lineWidth = 4;
-    ctx.strokeRect(16, 16, offCanvas.width - 32, offCanvas.height - 32);
-
+    ctx.strokeRect(20, 20, c.width - 40, c.height - 40);
     ctx.fillStyle = '#1e293b';
     ctx.font = 'bold 28px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`PDF-Seite ${slotIdx + 1}`, offCanvas.width / 2, offCanvas.height / 2 - 20);
+    ctx.fillText(fileName, c.width / 2, c.height / 2 - 15);
     ctx.fillStyle = '#64748b';
-    ctx.font = '20px sans-serif';
-    ctx.fillText(slot.fileName, offCanvas.width / 2, offCanvas.height / 2 + 20);
-    ctx.fillText(`Seite ${slot.pageIndex + 1} von ${slot.pageCount}`, offCanvas.width / 2, offCanvas.height / 2 + 54);
-
-    slot.pageCanvas = offCanvas;
-    const thumbCanvas = document.getElementById(`slotCanvas${slotIdx}`);
-    thumbCanvas.width = offCanvas.width;
-    thumbCanvas.height = offCanvas.height;
-    thumbCanvas.getContext('2d').drawImage(offCanvas, 0, 0);
+    ctx.font = '22px sans-serif';
+    ctx.fillText(`DIN A4 Seite ${pageNum} von ${totalPages}`, c.width / 2, c.height / 2 + 25);
+    return c;
   }
 
-  async function changeSlotPage(slotIdx, dir) {
-    const slot = state.pdfSlots[slotIdx];
-    if (!slot.hasFile || slot.pageCount <= 1) return;
-    const nextIdx = slot.pageIndex + dir;
-    if (nextIdx < 0 || nextIdx >= slot.pageCount) return;
-    slot.pageIndex = nextIdx;
-    if (slot.pdfJsDoc) {
-      await renderSlotThumbnail(slotIdx);
-    } else {
-      renderFallbackSlotThumbnail(slotIdx);
+  function renderAll() {
+    renderQueue();
+    renderSheetsPreview();
+  }
+
+  function renderQueue() {
+    const docItems = state.items.filter((it) => it.kind === 'doc');
+    const imgItems = state.items.filter((it) => it.kind === 'img');
+
+    els.pdfCountBadge.textContent = `${docItems.length} Brief${docItems.length === 1 ? '' : 'e'} (DIN A4)`;
+    els.imgCountBadge.textContent = `${imgItems.length} Foto${imgItems.length === 1 ? '' : 's'} (klein)`;
+
+    if (state.items.length === 0) {
+      els.emptyQueueState.hidden = false;
+      els.itemsGrid.hidden = true;
+      els.itemsGrid.innerHTML = '';
+      return;
     }
-    updateSlotDom(slotIdx);
-    renderLiveSheets();
+
+    els.emptyQueueState.hidden = true;
+    els.itemsGrid.hidden = false;
+    els.itemsGrid.innerHTML = '';
+
+    state.items.forEach((item, idx) => {
+      const card = document.createElement('div');
+      card.className = `item-card ${item.kind === 'doc' ? 'type-doc' : 'type-img'}`;
+
+      const top = document.createElement('div');
+      top.className = 'item-top';
+
+      const indexSpan = document.createElement('span');
+      indexSpan.className = 'item-index';
+      indexSpan.textContent = `Nr. ${idx + 1}`;
+
+      const typeBtn = document.createElement('button');
+      typeBtn.type = 'button';
+      typeBtn.className = `item-type-btn ${item.kind === 'doc' ? 'badge-doc' : 'badge-img'}`;
+      typeBtn.title = 'Hier klicken, um zwischen „Groß (wie ein Brief)“ und „Klein (wie ein Foto)“ zu wechseln';
+      typeBtn.textContent =
+        item.kind === 'doc' ? `📄 Groß (${state.pdfsPerPage}/Blatt)` : '🖼️ Klein (Foto)';
+      typeBtn.addEventListener('click', () => {
+        item.kind = item.kind === 'doc' ? 'img' : 'doc';
+        renderAll();
+      });
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'item-remove';
+      removeBtn.title = 'Diese Datei aus der Liste löschen';
+      removeBtn.innerHTML = '&times;';
+      removeBtn.addEventListener('click', () => {
+        state.items.splice(idx, 1);
+        renderAll();
+      });
+
+      top.appendChild(indexSpan);
+      top.appendChild(typeBtn);
+      top.appendChild(removeBtn);
+
+      const thumbWrap = document.createElement('div');
+      thumbWrap.className = 'item-thumb-wrap';
+      const rotCanvas = getRotatedCanvas(item.previewCanvas, item.rotation);
+      const thumbCanvas = document.createElement('canvas');
+      const thumbScale = Math.min(1, 220 / Math.max(rotCanvas.width, rotCanvas.height));
+      thumbCanvas.width = Math.max(1, Math.round(rotCanvas.width * thumbScale));
+      thumbCanvas.height = Math.max(1, Math.round(rotCanvas.height * thumbScale));
+      thumbCanvas.getContext('2d').drawImage(rotCanvas, 0, 0, thumbCanvas.width, thumbCanvas.height);
+      thumbWrap.appendChild(thumbCanvas);
+
+      const footer = document.createElement('div');
+      footer.className = 'item-footer';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'item-name';
+      nameEl.textContent = item.label;
+      nameEl.title = item.label;
+
+      const controls = document.createElement('div');
+      controls.className = 'item-controls';
+
+      const leftBtn = document.createElement('button');
+      leftBtn.type = 'button';
+      leftBtn.className = 'mini-btn';
+      leftBtn.textContent = '◄ Vor';
+      leftBtn.title = 'Weiter nach vorne schieben';
+      leftBtn.disabled = idx === 0;
+      leftBtn.addEventListener('click', () => {
+        if (idx > 0) {
+          const tmp = state.items[idx - 1];
+          state.items[idx - 1] = state.items[idx];
+          state.items[idx] = tmp;
+          renderAll();
+        }
+      });
+
+      const rotBtn = document.createElement('button');
+      rotBtn.type = 'button';
+      rotBtn.className = 'mini-btn';
+      rotBtn.textContent = '↻ Drehen';
+      rotBtn.title = 'Um 90 Grad drehen';
+      rotBtn.addEventListener('click', () => {
+        item.rotation = (item.rotation + 90) % 360;
+        renderAll();
+      });
+
+      const rightBtn = document.createElement('button');
+      rightBtn.type = 'button';
+      rightBtn.className = 'mini-btn';
+      rightBtn.textContent = 'Zurück ►';
+      rightBtn.title = 'Weiter nach hinten schieben';
+      rightBtn.disabled = idx === state.items.length - 1;
+      rightBtn.addEventListener('click', () => {
+        if (idx < state.items.length - 1) {
+          const tmp = state.items[idx + 1];
+          state.items[idx + 1] = state.items[idx];
+          state.items[idx] = tmp;
+          renderAll();
+        }
+      });
+
+      controls.appendChild(leftBtn);
+      controls.appendChild(rotBtn);
+      controls.appendChild(rightBtn);
+
+      footer.appendChild(nameEl);
+      footer.appendChild(controls);
+
+      card.appendChild(top);
+      card.appendChild(thumbWrap);
+      card.appendChild(footer);
+      els.itemsGrid.appendChild(card);
+    });
   }
 
-  function updateSlotDom(slotIdx) {
-    const slot = state.pdfSlots[slotIdx];
-    const card = document.getElementById(`slotCard${slotIdx}`);
-    const emptyEl = document.getElementById(`slotEmpty${slotIdx}`);
-    const previewWrap = document.getElementById(`slotPreviewWrap${slotIdx}`);
-    const footerEl = document.getElementById(`slotFooter${slotIdx}`);
-    const fileNameEl = document.getElementById(`fileName${slotIdx}`);
-    const pageSelectorEl = document.getElementById(`pageSelector${slotIdx}`);
-    const pageLabelEl = document.getElementById(`pageLabel${slotIdx}`);
-    const removeBtn = card.querySelector(`[data-clear-slot="${slotIdx}"]`);
-
-    card.classList.toggle('has-file', slot.hasFile);
-    emptyEl.hidden = slot.hasFile;
-    previewWrap.hidden = !slot.hasFile;
-    footerEl.hidden = !slot.hasFile;
-    removeBtn.hidden = !slot.hasFile;
-
-    if (slot.hasFile) {
-      fileNameEl.textContent = slot.fileName;
-      fileNameEl.title = slot.fileName;
-      pageSelectorEl.hidden = slot.pageCount <= 1;
-      pageLabelEl.textContent = `S. ${slot.pageIndex + 1}/${slot.pageCount}`;
-    }
-  }
-
-  function clearPdfSlot(slotIdx) {
-    state.pdfSlots[slotIdx] = createEmptyPdfSlot(slotIdx);
-    updateSlotDom(slotIdx);
-    updateUploadProgress();
-    renderLiveSheets();
-  }
-
-  // Handle Backside Image Upload
-  async function handleImageFileUpload(file) {
-    try {
-      hideStatus();
-      const dataUrl = await readFileAsDataURL(file);
-      const img = await loadImageElement(dataUrl);
-
-      state.imageSlot.hasImage = true;
-      state.imageSlot.fileName = file.name;
-      state.imageSlot.imgElement = img;
-      state.imageSlot.rotation = 0;
-
-      els.imageThumb.src = dataUrl;
-      els.imageThumb.style.transform = 'rotate(0deg)';
-      els.slotCardImage.classList.add('has-file');
-      els.imageEmpty.hidden = true;
-      els.imagePreviewWrap.hidden = false;
-      els.imageFooter.hidden = false;
-      els.clearImageBtn.hidden = false;
-      els.imageFileName.textContent = file.name;
-      els.imageFileName.title = file.name;
-
-      updateUploadProgress();
-      renderLiveSheets();
-    } catch (err) {
-      console.error('Fehler beim Laden des Bildes:', err);
-      showStatus(`Das Bild „${file.name}“ konnte nicht geladen werden. Bitte versuchen Sie eine andere Bilddatei.`, true);
-    }
-  }
-
-  function clearImageSlot() {
-    state.imageSlot.hasImage = false;
-    state.imageSlot.fileName = '';
-    state.imageSlot.imgElement = null;
-    state.imageSlot.rotation = 0;
-
-    els.imageThumb.removeAttribute('src');
-    els.slotCardImage.classList.remove('has-file');
-    els.imageEmpty.hidden = false;
-    els.imagePreviewWrap.hidden = true;
-    els.imageFooter.hidden = true;
-    els.clearImageBtn.hidden = true;
-
-    updateUploadProgress();
-    renderLiveSheets();
-  }
-
-  function updateUploadProgress() {
-    const pdfCount = state.pdfSlots.filter((s) => s.hasFile).length;
-    const imgCount = state.imageSlot.hasImage ? 1 : 0;
-    const total = pdfCount + imgCount;
-    els.uploadStatusBadge.textContent = `${total} / 4 Bereit`;
-    els.uploadStatusBadge.classList.toggle('complete', total === 4);
-  }
-
-  function updateSlotBadgesAndLabels() {
-    const badge0 = document.getElementById('slotBadge0');
-    const badge1 = document.getElementById('slotBadge1');
-    const badge2 = document.getElementById('slotBadge2');
-    const badgeImg = els.slotBadgeImage;
-
-    const isPortrait = state.layoutMode === 'three-up-portrait';
-    const orientWord = isPortrait ? 'Hochformat' : 'Querformat';
-    els.previewDimText.textContent = `1 doppelseitiges ${orientWord}-PDF (Seite 1: Vorderseite, Seite 2: Rückseite)`;
-
-    if (state.layoutMode === 'three-up-landscape') {
-      badge0.textContent = 'Vorderseite • Links (1/3)';
-      badge1.textContent = 'Vorderseite • Mitte (2/3)';
-      badge2.textContent = 'Vorderseite • Rechts (3/3)';
-      badge2.className = 'slot-target-badge';
-      badgeImg.textContent =
-        state.threeUpBackMode === 'repeat-3' ? 'Rückseite • 3× wiederholt' : 'Seite 2 • Ganze Rückseite';
-      els.frontMetaLabel.textContent = '3 Hochformat-PDF-Seiten nebeneinander auf 1 Querformat-Seite';
-      els.backMetaLabel.textContent =
-        state.threeUpBackMode === 'repeat-3'
-          ? 'Hochgeladenes Bild 3× auf der Rückseite wiederholt'
-          : 'Hochgeladenes Bild auf der Rückseite (Seite 2)';
-    } else if (state.layoutMode === 'two-up-duplex') {
-      badge0.textContent = 'Vorderseite • Linke Hälfte';
-      badge1.textContent = 'Vorderseite • Rechte Hälfte';
-      if (state.backSideOrder === 'pdf3-left-img-right') {
-        badge2.textContent = 'Rückseite • Linke Hälfte';
-        badgeImg.textContent = 'Rückseite • Rechte Hälfte';
-        els.backMetaLabel.textContent = 'Links: PDF-Seite 3 • Rechts: Hochgeladenes Bild';
-      } else {
-        badge2.textContent = 'Rückseite • Rechte Hälfte';
-        badgeImg.textContent = 'Rückseite • Linke Hälfte';
-        els.backMetaLabel.textContent = 'Links: Hochgeladenes Bild • Rechts: PDF-Seite 3';
-      }
-      badge2.className = 'slot-target-badge badge-back';
-      els.frontMetaLabel.textContent = 'Links: PDF-Seite 1 • Rechts: PDF-Seite 2 (2 Hochformat-Seiten auf 1 Querformat-Seite)';
-    } else {
-      // three-up-portrait
-      badge0.textContent = 'Vorderseite • Oben (1/3)';
-      badge1.textContent = 'Vorderseite • Mitte (2/3)';
-      badge2.textContent = 'Vorderseite • Unten (3/3)';
-      badge2.className = 'slot-target-badge';
-      badgeImg.textContent =
-        state.threeUpBackMode === 'repeat-3' ? 'Rückseite • 3× Reihen' : 'Seite 2 • Ganze Rückseite';
-      els.frontMetaLabel.textContent = '3 PDF-Seiten untereinander auf 1 Seite';
-      els.backMetaLabel.textContent =
-        state.threeUpBackMode === 'repeat-3'
-          ? 'Hochgeladenes Bild 3× auf der Rückseite wiederholt'
-          : 'Hochgeladenes Bild auf der Rückseite (Seite 2)';
-    }
-  }
-
-  // Compute exact slot bounding boxes in PDF coordinates (top-left origin for canvas, bottom-left converted for pdf-lib)
-  function getSheetGeometry() {
-    const baseSize = PAPER_SIZES[state.paperSize] || PAPER_SIZES.A4;
-    const isPortrait = state.layoutMode === 'three-up-portrait';
-    const sheetWidth = isPortrait ? baseSize.height : baseSize.width;
-    const sheetHeight = isPortrait ? baseSize.width : baseSize.height;
+  function computeA4Sheets() {
+    const sheetW = A4_LANDSCAPE.width;
+    const sheetH = A4_LANDSCAPE.height;
     const m = state.marginPt;
+    const innerW = Math.max(80, sheetW - m * 2);
+    const innerH = Math.max(80, sheetH - m * 2);
+    const gap = m > 0 ? Math.max(8, m * 0.7) : 6;
 
-    const innerW = Math.max(50, sheetWidth - m * 2);
-    const innerH = Math.max(50, sheetHeight - m * 2);
-    const gap = m > 0 ? Math.max(8, m * 0.75) : 0;
+    const docItems = state.items.filter((it) => it.kind === 'doc');
+    const imgItems = state.items.filter((it) => it.kind === 'img');
 
-    let frontRects = [];
-    let backRects = [];
-    let guideLines = []; // { x1, y1, x2, y2, page: 'front'|'back'|'both' }
+    const sheets = [];
+    let imgCursor = 0;
 
-    if (state.layoutMode === 'three-up-landscape') {
-      const colW = (innerW - gap * 2) / 3;
-      for (let i = 0; i < 3; i++) {
-        frontRects.push({
-          type: 'pdf',
-          slotIndex: i,
-          x: m + i * (colW + gap),
-          y: m,
-          w: colW,
-          h: innerH,
-          label: `PDF-Seite ${i + 1}`
+    // 1. Place DIN A4 Document pages (2 side-by-side horizontally on DIN A4 by default)
+    const docsPerSheet = state.pdfsPerPage;
+    for (let i = 0; i < docItems.length; i += docsPerSheet) {
+      const chunk = docItems.slice(i, i + docsPerSheet);
+      const placements = [];
+      const guideLines = [];
+
+      if (docsPerSheet === 4) {
+        const cellW = (innerW - gap) / 2;
+        const cellH = (innerH - gap) / 2;
+        chunk.forEach((docItem, idx) => {
+          const col = idx % 2;
+          const row = Math.floor(idx / 2);
+          placements.push({
+            item: docItem,
+            x: m + col * (cellW + gap),
+            y: m + row * (cellH + gap),
+            w: cellW,
+            h: cellH,
+            slotRole: 'doc'
+          });
         });
-      }
-      // Vertical divider lines between the 3 columns
-      for (let i = 1; i < 3; i++) {
-        const lineX = m + i * colW + (i - 0.5) * gap;
-        guideLines.push({ x1: lineX, y1: m * 0.4, x2: lineX, y2: sheetHeight - m * 0.4, page: 'front' });
-      }
-
-      if (state.threeUpBackMode === 'repeat-3') {
-        for (let i = 0; i < 3; i++) {
-          backRects.push({
-            type: 'image',
-            x: m + i * (colW + gap),
+        guideLines.push({ x1: sheetW / 2, y1: m * 0.4, x2: sheetW / 2, y2: sheetH - m * 0.4 });
+        guideLines.push({ x1: m * 0.4, y1: sheetH / 2, x2: sheetW - m * 0.4, y2: sheetH / 2 });
+      } else {
+        const colW = (innerW - gap * (docsPerSheet - 1)) / docsPerSheet;
+        chunk.forEach((docItem, idx) => {
+          placements.push({
+            item: docItem,
+            x: m + idx * (colW + gap),
             y: m,
             w: colW,
             h: innerH,
-            label: `Rückseitenbild (${i + 1}/3)`
+            slotRole: 'doc'
           });
-        }
-        for (let i = 1; i < 3; i++) {
-          const lineX = m + i * colW + (i - 0.5) * gap;
-          guideLines.push({ x1: lineX, y1: m * 0.4, x2: lineX, y2: sheetHeight - m * 0.4, page: 'back' });
-        }
-      } else {
-        backRects.push({
-          type: 'image',
-          x: m,
-          y: m,
-          w: innerW,
-          h: innerH,
-          label: 'Rückseitenbild'
         });
-      }
-    } else if (state.layoutMode === 'two-up-duplex') {
-      const colW = (innerW - gap) / 2;
-      frontRects = [
-        { type: 'pdf', slotIndex: 0, x: m, y: m, w: colW, h: innerH, label: 'PDF-Seite 1' },
-        { type: 'pdf', slotIndex: 1, x: m + colW + gap, y: m, w: colW, h: innerH, label: 'PDF-Seite 2' }
-      ];
-      const midX = sheetWidth / 2;
-      guideLines.push({ x1: midX, y1: m * 0.4, x2: midX, y2: sheetHeight - m * 0.4, page: 'both' });
+        for (let c = 1; c < docsPerSheet; c++) {
+          const lineX = m + c * colW + (c - 0.5) * gap;
+          guideLines.push({ x1: lineX, y1: m * 0.4, x2: lineX, y2: sheetH - m * 0.4 });
+        }
 
-      if (state.backSideOrder === 'pdf3-left-img-right') {
-        backRects = [
-          { type: 'pdf', slotIndex: 2, x: m, y: m, w: colW, h: innerH, label: 'PDF-Seite 3' },
-          { type: 'image', x: m + colW + gap, y: m, w: colW, h: innerH, label: 'Rückseitenbild' }
-        ];
-      } else {
-        backRects = [
-          { type: 'image', x: m, y: m, w: colW, h: innerH, label: 'Rückseitenbild' },
-          { type: 'pdf', slotIndex: 2, x: m + colW + gap, y: m, w: colW, h: innerH, label: 'PDF-Seite 3' }
-        ];
-      }
-    } else {
-      // three-up-portrait (stacked vertically)
-      const rowH = (innerH - gap * 2) / 3;
-      for (let i = 0; i < 3; i++) {
-        frontRects.push({
-          type: 'pdf',
-          slotIndex: i,
-          x: m,
-          y: m + i * (rowH + gap),
-          w: innerW,
-          h: rowH,
-          label: `PDF-Seite ${i + 1}`
-        });
-      }
-      for (let i = 1; i < 3; i++) {
-        const lineY = m + i * rowH + (i - 0.5) * gap;
-        guideLines.push({ x1: m * 0.4, y1: lineY, x2: sheetWidth - m * 0.4, y2: lineY, page: 'front' });
+        const freeCols = docsPerSheet - chunk.length;
+        if (
+          freeCols > 0 &&
+          state.packMode === 'pack-free-half' &&
+          imgCursor < imgItems.length
+        ) {
+          const freeX = m + chunk.length * (colW + gap);
+          const freeW = freeCols * colW + (freeCols - 1) * gap;
+          const freeH = innerH;
+
+          const halfCapacity = Math.max(
+            2,
+            Math.round((state.imagesPerPage * freeCols) / docsPerSheet)
+          );
+          const subGrid = getCompactGridDimensions(halfCapacity, freeW, freeH);
+          const subCellW = (freeW - gap * (subGrid.cols - 1)) / subGrid.cols;
+          const subCellH = (freeH - gap * (subGrid.rows - 1)) / subGrid.rows;
+
+          const countToPlace = Math.min(halfCapacity, imgItems.length - imgCursor);
+          for (let k = 0; k < countToPlace; k++) {
+            const col = k % subGrid.cols;
+            const row = Math.floor(k / subGrid.cols);
+            placements.push({
+              item: imgItems[imgCursor++],
+              x: freeX + col * (subCellW + gap),
+              y: m + row * (subCellH + gap),
+              w: subCellW,
+              h: subCellH,
+              slotRole: 'img'
+            });
+          }
+
+          sheets.push({
+            sheetNumber: sheets.length + 1,
+            sheetWidth: sheetW,
+            sheetHeight: sheetH,
+            placements,
+            guideLines,
+            tagType: 'mixed',
+            tagLabel: `DIN-A4-BLATT ${sheets.length + 1} — BRIEF LINKS + FOTOS RECHTS`,
+            metaLabel: `${chunk.length} Brief-Seite(n) + ${countToPlace} verkleinerte(s) Foto(s) auf der freien Blatthälfte`
+          });
+          continue;
+        }
       }
 
-      if (state.threeUpBackMode === 'repeat-3') {
-        for (let i = 0; i < 3; i++) {
-          backRects.push({
-            type: 'image',
-            x: m,
-            y: m + i * (rowH + gap),
-            w: innerW,
-            h: rowH,
-            label: `Rückseitenbild (${i + 1}/3)`
-          });
-        }
-        for (let i = 1; i < 3; i++) {
-          const lineY = m + i * rowH + (i - 0.5) * gap;
-          guideLines.push({ x1: m * 0.4, y1: lineY, x2: sheetWidth - m * 0.4, y2: lineY, page: 'back' });
-        }
-      } else {
-        backRects.push({
-          type: 'image',
-          x: m,
-          y: m,
-          w: innerW,
-          h: innerH,
-          label: 'Rückseitenbild'
-        });
-      }
+      sheets.push({
+        sheetNumber: sheets.length + 1,
+        sheetWidth: sheetW,
+        sheetHeight: sheetH,
+        placements,
+        guideLines,
+        tagType: 'doc',
+        tagLabel: `DIN-A4-BLATT ${sheets.length + 1} — ${chunk.length} BRIEF-SEITE(N) NEBENEINANDER`,
+        metaLabel: `Je ${docsPerSheet} DIN-A4-Seiten nebeneinander auf 1 DIN-A4-Querformat-Blatt`
+      });
     }
 
-    return { sheetWidth, sheetHeight, frontRects, backRects, guideLines };
+    // 2. Pack all remaining images compactly onto DIN A4 sheet(s)
+    const imgsPerSheet = state.imagesPerPage;
+    while (imgCursor < imgItems.length) {
+      const chunk = imgItems.slice(imgCursor, imgCursor + imgsPerSheet);
+      imgCursor += chunk.length;
+
+      const grid = getCompactGridDimensions(imgsPerSheet, innerW, innerH);
+      const cellW = (innerW - gap * (grid.cols - 1)) / grid.cols;
+      const cellH = (innerH - gap * (grid.rows - 1)) / grid.rows;
+      const placements = [];
+      const guideLines = [];
+
+      chunk.forEach((imgItem, idx) => {
+        const col = idx % grid.cols;
+        const row = Math.floor(idx / grid.cols);
+        placements.push({
+          item: imgItem,
+          x: m + col * (cellW + gap),
+          y: m + row * (cellH + gap),
+          w: cellW,
+          h: cellH,
+          slotRole: 'img'
+        });
+      });
+
+      for (let c = 1; c < grid.cols; c++) {
+        const lx = m + c * cellW + (c - 0.5) * gap;
+        guideLines.push({ x1: lx, y1: m * 0.4, x2: lx, y2: sheetH - m * 0.4 });
+      }
+      for (let r = 1; r < grid.rows; r++) {
+        const ly = m + r * cellH + (r - 0.5) * gap;
+        guideLines.push({ x1: m * 0.4, y1: ly, x2: sheetW - m * 0.4, y2: ly });
+      }
+
+      sheets.push({
+        sheetNumber: sheets.length + 1,
+        sheetWidth: sheetW,
+        sheetHeight: sheetH,
+        placements,
+        guideLines,
+        tagType: 'img',
+        tagLabel: `DIN-A4-BLATT ${sheets.length + 1} — FOTOS PLATZSPAREND (${grid.cols}×${grid.rows})`,
+        metaLabel: `${chunk.length} Foto(s) klein und übersichtlich auf 1 DIN-A4-Blatt`
+      });
+    }
+
+    // Placeholder sheet with visual illustration when nothing is uploaded yet
+    if (sheets.length === 0) {
+      const halfW = (innerW - gap) / 2;
+      sheets.push({
+        sheetNumber: 1,
+        sheetWidth: sheetW,
+        sheetHeight: sheetH,
+        placements: [],
+        guideLines: [{ x1: sheetW / 2, y1: m * 0.4, x2: sheetW / 2, y2: sheetH - m * 0.4 }],
+        isPlaceholder: true,
+        placeholderBoxes: [
+          {
+            x: m,
+            y: m,
+            w: halfW,
+            h: innerH,
+            title: '📄 Linke Blatthälfte: Brief / PDF 1',
+            subtitle: 'Hier liegt automatisch die 1. DIN-A4-Seite',
+            bg: '#eff6ff',
+            border: '#93c5fd',
+            color: '#1d4ed8'
+          },
+          {
+            x: m + halfW + gap,
+            y: m,
+            w: halfW,
+            h: innerH,
+            title: '📄 Rechte Blatthälfte: Brief 2 oder 🖼️ Fotos',
+            subtitle: 'Hier liegt die 2. DIN-A4-Seite (oder verkleinerte Fotos)',
+            bg: '#ecfdf5',
+            border: '#6ee7b7',
+            color: '#047857'
+          }
+        ],
+        tagType: 'doc',
+        tagLabel: 'BEISPIEL-ANSICHT — 1 DIN-A4-BLATT (QUERFORMAT)',
+        metaLabel: 'Wählen Sie links Ihre Dateien aus, um die echte Vorschau zu sehen'
+      });
+    }
+
+    return sheets;
   }
 
-  // Render live previews of Page 1 (Front) and Page 2 (Back)
-  function renderLiveSheets(scaleMultiplier = 1.25) {
-    const geom = getSheetGeometry();
-    drawSheetCanvas(els.frontSheetCanvas, geom, geom.frontRects, 'front', scaleMultiplier, true);
-    drawSheetCanvas(els.backSheetCanvas, geom, geom.backRects, 'back', scaleMultiplier, true);
+  function getCompactGridDimensions(count, areaW, areaH) {
+    const isLandscapeArea = areaW >= areaH;
+    switch (count) {
+      case 2:
+        return isLandscapeArea ? { cols: 2, rows: 1 } : { cols: 1, rows: 2 };
+      case 3:
+        return isLandscapeArea ? { cols: 3, rows: 1 } : { cols: 1, rows: 3 };
+      case 4:
+        return { cols: 2, rows: 2 };
+      case 6:
+        return isLandscapeArea ? { cols: 3, rows: 2 } : { cols: 2, rows: 3 };
+      case 8:
+        return isLandscapeArea ? { cols: 4, rows: 2 } : { cols: 2, rows: 4 };
+      case 9:
+        return { cols: 3, rows: 3 };
+      case 12:
+        return isLandscapeArea ? { cols: 4, rows: 3 } : { cols: 3, rows: 4 };
+      default: {
+        const cols = Math.ceil(Math.sqrt(count * (areaW / areaH)));
+        const rows = Math.ceil(count / cols);
+        return { cols, rows };
+      }
+    }
   }
 
-  function drawSheetCanvas(canvas, geom, rects, side, scale, showPlaceholders) {
-    const w = Math.round(geom.sheetWidth * scale);
-    const h = Math.round(geom.sheetHeight * scale);
+  function renderSheetsPreview() {
+    const sheets = computeA4Sheets();
+    const realCount = sheets[0] && sheets[0].isPlaceholder ? 0 : sheets.length;
+    els.previewDimText.textContent =
+      realCount > 0
+        ? `Ihr fertiges Dokument hat ${realCount} DIN-A4-Blatt/Blätter (aus ${state.items.length} hochgeladenen Seiten/Fotos)`
+        : 'So werden Ihre Dokumente und Fotos auf DIN-A4-Blättern angeordnet';
+
+    els.sheetsContainer.innerHTML = '';
+
+    sheets.forEach((sheet) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'sheet-wrapper';
+
+      const labelBar = document.createElement('div');
+      labelBar.className = 'sheet-label-bar';
+
+      const tag = document.createElement('span');
+      tag.className =
+        sheet.tagType === 'img'
+          ? 'sheet-tag img-sheet-tag'
+          : sheet.tagType === 'mixed'
+          ? 'sheet-tag mixed-sheet-tag'
+          : 'sheet-tag';
+      tag.textContent = sheet.tagLabel;
+
+      const meta = document.createElement('span');
+      meta.className = 'sheet-meta';
+      meta.textContent = sheet.metaLabel;
+
+      labelBar.appendChild(tag);
+      labelBar.appendChild(meta);
+
+      const stage = document.createElement('div');
+      stage.className = 'sheet-stage';
+
+      const canvas = document.createElement('canvas');
+      canvas.className = 'sheet-canvas';
+      drawA4SheetOnCanvas(canvas, sheet, 1.25);
+
+      stage.appendChild(canvas);
+      wrapper.appendChild(labelBar);
+      wrapper.appendChild(stage);
+      els.sheetsContainer.appendChild(wrapper);
+    });
+  }
+
+  function drawA4SheetOnCanvas(canvas, sheet, scale) {
+    const w = Math.round(sheet.sheetWidth * scale);
+    const h = Math.round(sheet.sheetHeight * scale);
     canvas.width = w;
     canvas.height = h;
 
@@ -751,50 +845,58 @@
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, w, h);
 
-    for (const rect of rects) {
-      const rx = rect.x * scale;
-      const ry = rect.y * scale;
-      const rw = rect.w * scale;
-      const rh = rect.h * scale;
-
-      if (rect.type === 'pdf') {
-        const slot = state.pdfSlots[rect.slotIndex];
-        if (slot && slot.hasFile && slot.pageCanvas) {
-          drawContainedCanvas(ctx, slot.pageCanvas, rx, ry, rw, rh);
-        } else if (showPlaceholders) {
-          drawPlaceholderBox(ctx, rx, ry, rw, rh, rect.label, 'PDF-Seite ablegen oder auswählen', '#eff6ff', '#93c5fd', '#1d4ed8');
-        }
-      } else if (rect.type === 'image') {
-        if (state.imageSlot.hasImage && state.imageSlot.imgElement) {
-          drawRotatedImageInBox(
-            ctx,
-            state.imageSlot.imgElement,
-            state.imageSlot.rotation,
-            state.imageFit,
-            rx,
-            ry,
-            rw,
-            rh
-          );
-        } else if (showPlaceholders) {
-          drawPlaceholderBox(ctx, rx, ry, rw, rh, rect.label, 'Rückseitenbild hochladen', '#ecfdf5', '#6ee7b7', '#047857');
-        }
+    if (sheet.isPlaceholder && sheet.placeholderBoxes) {
+      for (const box of sheet.placeholderBoxes) {
+        drawPlaceholderBox(
+          ctx,
+          box.x * scale,
+          box.y * scale,
+          box.w * scale,
+          box.h * scale,
+          box.title,
+          box.subtitle,
+          box.bg,
+          box.border,
+          box.color
+        );
       }
     }
 
-    // Draw cut/fold guide lines if enabled
-    if (state.showGuides) {
+    for (const p of sheet.placements) {
+      const rx = p.x * scale;
+      const ry = p.y * scale;
+      const rw = p.w * scale;
+      const rh = p.h * scale;
+      const captionH = state.showCaptions && p.slotRole === 'img' ? 14 * scale : 0;
+      const contentH = Math.max(10, rh - captionH);
+
+      const rotCanvas = getRotatedCanvas(p.item.previewCanvas, p.item.rotation);
+      const fitMode = p.slotRole === 'img' ? state.imageFit : 'contain';
+
+      drawCanvasInBox(ctx, rotCanvas, fitMode, rx, ry, rw, contentH);
+
+      if (captionH > 0) {
+        ctx.save();
+        ctx.fillStyle = '#475569';
+        ctx.font = `${Math.round(9.5 * scale)}px -apple-system, sans-serif`;
+        ctx.textAlign = 'center';
+        const shortLabel =
+          p.item.label.length > 28 ? p.item.label.slice(0, 26) + '…' : p.item.label;
+        ctx.fillText(shortLabel, rx + rw / 2, ry + rh - 3 * scale);
+        ctx.restore();
+      }
+    }
+
+    if (state.showGuides && sheet.guideLines) {
       ctx.save();
-      ctx.strokeStyle = '#94a3b8';
-      ctx.lineWidth = Math.max(1, 0.8 * scale);
-      ctx.setLineDash([6 * scale, 5 * scale]);
-      for (const line of geom.guideLines) {
-        if (line.page === 'both' || line.page === side) {
-          ctx.beginPath();
-          ctx.moveTo(line.x1 * scale, line.y1 * scale);
-          ctx.lineTo(line.x2 * scale, line.y2 * scale);
-          ctx.stroke();
-        }
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = Math.max(1, 0.75 * scale);
+      ctx.setLineDash([5 * scale, 4 * scale]);
+      for (const line of sheet.guideLines) {
+        ctx.beginPath();
+        ctx.moveTo(line.x1 * scale, line.y1 * scale);
+        ctx.lineTo(line.x2 * scale, line.y2 * scale);
+        ctx.stroke();
       }
       ctx.restore();
     }
@@ -802,35 +904,8 @@
     ctx.restore();
   }
 
-  function drawContainedCanvas(ctx, sourceCanvas, boxX, boxY, boxW, boxH) {
-    const srcRatio = sourceCanvas.width / sourceCanvas.height;
-    const boxRatio = boxW / boxH;
-    let drawW, drawH;
-    if (srcRatio > boxRatio) {
-      drawW = boxW;
-      drawH = boxW / srcRatio;
-    } else {
-      drawH = boxH;
-      drawW = boxH * srcRatio;
-    }
-    const drawX = boxX + (boxW - drawW) / 2;
-    const drawY = boxY + (boxH - drawH) / 2;
-
-    ctx.save();
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(drawX, drawY, drawW, drawH);
-    ctx.drawImage(sourceCanvas, drawX, drawY, drawW, drawH);
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(drawX, drawY, drawW, drawH);
-    ctx.restore();
-  }
-
-  function drawRotatedImageInBox(ctx, img, rotationDeg, fitMode, boxX, boxY, boxW, boxH) {
-    const rotCanvas = getRotatedImageCanvas(img, rotationDeg);
-    const srcW = rotCanvas.width;
-    const srcH = rotCanvas.height;
-    const srcRatio = srcW / srcH;
+  function drawCanvasInBox(ctx, srcCanvas, fitMode, boxX, boxY, boxW, boxH) {
+    const srcRatio = srcCanvas.width / srcCanvas.height;
     const boxRatio = boxW / boxH;
 
     ctx.save();
@@ -838,10 +913,8 @@
     ctx.rect(boxX, boxY, boxW, boxH);
     ctx.clip();
 
-    if (fitMode === 'stretch') {
-      ctx.drawImage(rotCanvas, boxX, boxY, boxW, boxH);
-    } else if (fitMode === 'cover') {
-      let drawW, drawH;
+    let drawW, drawH;
+    if (fitMode === 'cover') {
       if (srcRatio > boxRatio) {
         drawH = boxH;
         drawW = boxH * srcRatio;
@@ -849,12 +922,7 @@
         drawW = boxW;
         drawH = boxW / srcRatio;
       }
-      const drawX = boxX + (boxW - drawW) / 2;
-      const drawY = boxY + (boxH - drawH) / 2;
-      ctx.drawImage(rotCanvas, drawX, drawY, drawW, drawH);
     } else {
-      // contain
-      let drawW, drawH;
       if (srcRatio > boxRatio) {
         drawW = boxW;
         drawH = boxW / srcRatio;
@@ -862,27 +930,37 @@
         drawH = boxH;
         drawW = boxH * srcRatio;
       }
-      const drawX = boxX + (boxW - drawW) / 2;
-      const drawY = boxY + (boxH - drawH) / 2;
-      ctx.drawImage(rotCanvas, drawX, drawY, drawW, drawH);
     }
 
+    const drawX = boxX + (boxW - drawW) / 2;
+    const drawY = boxY + (boxH - drawH) / 2;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(drawX, drawY, drawW, drawH);
+    ctx.drawImage(srcCanvas, drawX, drawY, drawW, drawH);
+
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(
+      fitMode === 'cover' ? boxX : drawX,
+      fitMode === 'cover' ? boxY : drawY,
+      fitMode === 'cover' ? boxW : drawW,
+      fitMode === 'cover' ? boxH : drawH
+    );
     ctx.restore();
   }
 
-  function getRotatedImageCanvas(img, rotationDeg) {
+  function getRotatedCanvas(srcCanvas, rotationDeg) {
     const deg = ((rotationDeg % 360) + 360) % 360;
-    const swapDims = deg === 90 || deg === 270;
-    const w = img.naturalWidth || img.width;
-    const h = img.naturalHeight || img.height;
-
+    if (deg === 0) return srcCanvas;
+    const swap = deg === 90 || deg === 270;
     const c = document.createElement('canvas');
-    c.width = swapDims ? h : w;
-    c.height = swapDims ? w : h;
+    c.width = swap ? srcCanvas.height : srcCanvas.width;
+    c.height = swap ? srcCanvas.width : srcCanvas.height;
     const ctx = c.getContext('2d');
     ctx.translate(c.width / 2, c.height / 2);
     ctx.rotate((deg * Math.PI) / 180);
-    ctx.drawImage(img, -w / 2, -h / 2, w, h);
+    ctx.drawImage(srcCanvas, -srcCanvas.width / 2, -srcCanvas.height / 2);
     return c;
   }
 
@@ -892,27 +970,28 @@
     ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
     ctx.strokeStyle = border;
     ctx.lineWidth = 1.5;
-    ctx.setLineDash([5, 4]);
+    ctx.setLineDash([6, 4]);
     ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
     ctx.setLineDash([]);
 
     ctx.fillStyle = textColor;
-    ctx.font = `bold ${Math.max(11, Math.min(18, Math.round(w * 0.065)))}px -apple-system, sans-serif`;
+    ctx.font = `bold ${Math.max(12, Math.min(17, Math.round(w * 0.044)))}px -apple-system, sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(title, x + w / 2, y + h / 2 - 6);
+    ctx.fillText(title, x + w / 2, y + h / 2 - 8);
 
     ctx.fillStyle = '#64748b';
-    ctx.font = `${Math.max(9, Math.min(13, Math.round(w * 0.045)))}px -apple-system, sans-serif`;
+    ctx.font = `${Math.max(10, Math.min(13, Math.round(w * 0.033)))}px -apple-system, sans-serif`;
     ctx.fillText(subtitle, x + w / 2, y + h / 2 + 14);
     ctx.restore();
   }
 
-  // Export Combined 2-Page PDF (Page 1: Front with scaled PDFs, Page 2: Backside with Image)
+  // Export all generated DIN A4 sheets into a single multi-page DIN A4 PDF
   async function exportCombinedPdf(openInNewTab = false) {
-    const anyPdfLoaded = state.pdfSlots.some((s) => s.hasFile);
-    const anyImageLoaded = state.imageSlot.hasImage;
-    if (!anyPdfLoaded && !anyImageLoaded) {
-      showStatus('Bitte laden Sie Ihre 3 PDF-Seiten und ein Rückseitenbild hoch (oder klicken Sie zum Testen auf „Beispieldateien laden“).', true);
+    if (state.items.length === 0) {
+      showStatus(
+        'Bitte wählen Sie zuerst in Schritt 1 Ihre Dateien aus (oder klicken Sie oben rechts auf „Beispiel ausprobieren“).',
+        true
+      );
       return;
     }
 
@@ -921,11 +1000,13 @@
       els.openPdfTabBtn.disabled = true;
       hideStatus();
 
+      const sheets = computeA4Sheets();
       let finalPdfBytes;
+
       if (window.PDFLib) {
-        finalPdfBytes = await buildVectorPdfWithPdfLib();
+        finalPdfBytes = await buildMultiPageVectorPdf(sheets);
       } else {
-        finalPdfBytes = await buildHighResCanvasPdfFallback();
+        finalPdfBytes = buildMultiPageCanvasPdfFallback(sheets);
       }
 
       const blob = new Blob([finalPdfBytes], { type: 'application/pdf' });
@@ -933,15 +1014,17 @@
 
       if (openInNewTab) {
         window.open(url, '_blank');
-        showStatus('Kombiniertes 2-seitiges PDF in einem neuen Tab geöffnet (bereit für den beidseitigen Druck).');
+        showStatus(`Ihr fertiges PDF (${sheets.length} DIN-A4-Blatt/Blätter) wurde in einem neuen Tab zum Drucken geöffnet.`);
       } else {
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'wiedereintritt-kombiniert.pdf';
+        a.download = 'Fertiges-DIN-A4-Dokument.pdf';
         document.body.appendChild(a);
         a.click();
         a.remove();
-        showStatus('„wiedereintritt-kombiniert.pdf“ heruntergeladen (Seite 1: PDF-Vorderseite, Seite 2: Rückseitenbild)!');
+        showStatus(
+          `„Fertiges-DIN-A4-Dokument.pdf“ (${sheets.length} DIN-A4-Seite${sheets.length === 1 ? '' : 'n'}) wurde gespeichert!`
+        );
       }
     } catch (err) {
       console.error('Fehler beim Erstellen des PDFs:', err);
@@ -952,95 +1035,30 @@
     }
   }
 
-  // Vector-preserving PDF generation using pdf-lib
-  async function buildVectorPdfWithPdfLib() {
-    const { PDFDocument, rgb } = window.PDFLib;
+  async function buildMultiPageVectorPdf(sheets) {
+    const { PDFDocument, StandardFonts, rgb } = window.PDFLib;
     const outDoc = await PDFDocument.create();
-    const geom = getSheetGeometry();
+    const fontReg = await outDoc.embedFont(StandardFonts.Helvetica);
 
-    const frontPage = outDoc.addPage([geom.sheetWidth, geom.sheetHeight]);
-    const backPage = outDoc.addPage([geom.sheetWidth, geom.sheetHeight]);
+    for (const sheet of sheets) {
+      const pdfPage = outDoc.addPage([sheet.sheetWidth, sheet.sheetHeight]);
 
-    // Pre-embed uploaded PDF pages
-    const embeddedPdfPages = [null, null, null];
-    for (let i = 0; i < 3; i++) {
-      const slot = state.pdfSlots[i];
-      if (slot.hasFile && slot.pdfBytes) {
-        const srcDoc = await PDFDocument.load(slot.pdfBytes);
-        const safePageIdx = Math.min(slot.pageIndex, srcDoc.getPageCount() - 1);
-        const [embeddedPage] = await outDoc.embedPdf(srcDoc, [safePageIdx]);
-        embeddedPdfPages[i] = embeddedPage;
-      }
-    }
+      for (const p of sheet.placements) {
+        const captionH = state.showCaptions && p.slotRole === 'img' ? 12 : 0;
+        const boxW = p.w;
+        const boxH = Math.max(10, p.h - captionH);
+        const pdfBoxX = p.x;
+        const pdfBoxY = sheet.sheetHeight - p.y - boxH;
 
-    // Pre-embed uploaded backside image (normalized via canvas to handle rotation/crop/WebP/SVG cleanly)
-    let embeddedImage = null;
-    if (state.imageSlot.hasImage && state.imageSlot.imgElement) {
-      const rotCanvas = getRotatedImageCanvas(state.imageSlot.imgElement, state.imageSlot.rotation);
-      const pngDataUrl = rotCanvas.toDataURL('image/png');
-      const pngBytes = dataUrlToUint8Array(pngDataUrl);
-      embeddedImage = await outDoc.embedPng(pngBytes);
-    }
+        const item = p.item;
+        const fitMode = p.slotRole === 'img' ? state.imageFit : 'contain';
 
-    // Helper to draw a rect item onto a pdf-lib page
-    const drawItemOnPdfPage = async (pdfPage, rect) => {
-      // Convert top-left Y to bottom-left Y for pdf-lib
-      const pdfBoxX = rect.x;
-      const pdfBoxY = geom.sheetHeight - rect.y - rect.h;
-      const boxW = rect.w;
-      const boxH = rect.h;
+        if (item.sourceType === 'pdf' && item.pdfBytes && item.rotation === 0 && fitMode === 'contain') {
+          const srcDoc = await PDFDocument.load(item.pdfBytes);
+          const safeIdx = Math.min(item.pageIndex, srcDoc.getPageCount() - 1);
+          const [embPage] = await outDoc.embedPdf(srcDoc, [safeIdx]);
 
-      if (rect.type === 'pdf') {
-        const embPage = embeddedPdfPages[rect.slotIndex];
-        if (!embPage) return;
-
-        const srcRatio = embPage.width / embPage.height;
-        const boxRatio = boxW / boxH;
-        let drawW, drawH;
-        if (srcRatio > boxRatio) {
-          drawW = boxW;
-          drawH = boxW / srcRatio;
-        } else {
-          drawH = boxH;
-          drawW = boxH * srcRatio;
-        }
-        const drawX = pdfBoxX + (boxW - drawW) / 2;
-        const drawY = pdfBoxY + (boxH - drawH) / 2;
-
-        pdfPage.drawPage(embPage, {
-          x: drawX,
-          y: drawY,
-          width: drawW,
-          height: drawH
-        });
-      } else if (rect.type === 'image') {
-        if (!embeddedImage) return;
-
-        if (state.imageFit === 'stretch') {
-          pdfPage.drawImage(embeddedImage, {
-            x: pdfBoxX,
-            y: pdfBoxY,
-            width: boxW,
-            height: boxH
-          });
-        } else if (state.imageFit === 'cover') {
-          // Crop to exact aspect ratio on a canvas so it doesn't bleed outside the slot
-          const croppedPngBytes = getCroppedCoverImagePngBytes(
-            state.imageSlot.imgElement,
-            state.imageSlot.rotation,
-            boxW,
-            boxH
-          );
-          const croppedEmbedded = await outDoc.embedPng(croppedPngBytes);
-          pdfPage.drawImage(croppedEmbedded, {
-            x: pdfBoxX,
-            y: pdfBoxY,
-            width: boxW,
-            height: boxH
-          });
-        } else {
-          // contain
-          const srcRatio = embeddedImage.width / embeddedImage.height;
+          const srcRatio = embPage.width / embPage.height;
           const boxRatio = boxW / boxH;
           let drawW, drawH;
           if (srcRatio > boxRatio) {
@@ -1052,40 +1070,72 @@
           }
           const drawX = pdfBoxX + (boxW - drawW) / 2;
           const drawY = pdfBoxY + (boxH - drawH) / 2;
-          pdfPage.drawImage(embeddedImage, {
+
+          pdfPage.drawPage(embPage, {
             x: drawX,
             y: drawY,
             width: drawW,
             height: drawH
           });
+        } else {
+          const rotCanvas = getRotatedCanvas(item.previewCanvas, item.rotation);
+          if (fitMode === 'cover') {
+            const croppedBytes = getCroppedCanvasJpegBytes(rotCanvas, boxW, boxH);
+            const embImg = await outDoc.embedJpg(croppedBytes);
+            pdfPage.drawImage(embImg, {
+              x: pdfBoxX,
+              y: pdfBoxY,
+              width: boxW,
+              height: boxH
+            });
+          } else {
+            const pngBytes = dataUrlToUint8Array(rotCanvas.toDataURL('image/png'));
+            const embImg = await outDoc.embedPng(pngBytes);
+            const srcRatio = embImg.width / embImg.height;
+            const boxRatio = boxW / boxH;
+            let drawW, drawH;
+            if (srcRatio > boxRatio) {
+              drawW = boxW;
+              drawH = boxW / srcRatio;
+            } else {
+              drawH = boxH;
+              drawW = boxH * srcRatio;
+            }
+            const drawX = pdfBoxX + (boxW - drawW) / 2;
+            const drawY = pdfBoxY + (boxH - drawH) / 2;
+            pdfPage.drawImage(embImg, {
+              x: drawX,
+              y: drawY,
+              width: drawW,
+              height: drawH
+            });
+          }
+        }
+
+        if (captionH > 0) {
+          const shortLabel =
+            item.label.length > 32 ? item.label.slice(0, 30) + '...' : item.label;
+          const textSize = 7.5;
+          const textWidth = fontReg.widthOfTextAtSize(shortLabel, textSize);
+          pdfPage.drawText(shortLabel, {
+            x: pdfBoxX + Math.max(0, (boxW - textWidth) / 2),
+            y: sheet.sheetHeight - p.y - p.h + 2,
+            size: textSize,
+            font: fontReg,
+            color: rgb(0.3, 0.35, 0.42)
+          });
         }
       }
-    };
 
-    for (const rect of geom.frontRects) {
-      await drawItemOnPdfPage(frontPage, rect);
-    }
-    for (const rect of geom.backRects) {
-      await drawItemOnPdfPage(backPage, rect);
-    }
-
-    // Draw cut/fold guide lines if enabled
-    if (state.showGuides) {
-      for (const line of geom.guideLines) {
-        const start = { x: line.x1, y: geom.sheetHeight - line.y1 };
-        const end = { x: line.x2, y: geom.sheetHeight - line.y2 };
-        const lineOpts = {
-          start,
-          end,
-          thickness: 0.6,
-          color: rgb(0.65, 0.71, 0.78),
-          dashArray: [5, 4]
-        };
-        if (line.page === 'both' || line.page === 'front') {
-          frontPage.drawLine(lineOpts);
-        }
-        if (line.page === 'both' || line.page === 'back') {
-          backPage.drawLine(lineOpts);
+      if (state.showGuides && sheet.guideLines) {
+        for (const line of sheet.guideLines) {
+          pdfPage.drawLine({
+            start: { x: line.x1, y: sheet.sheetHeight - line.y1 },
+            end: { x: line.x2, y: sheet.sheetHeight - line.y2 },
+            thickness: 0.5,
+            color: rgb(0.75, 0.8, 0.86),
+            dashArray: [5, 4]
+          });
         }
       }
     }
@@ -1093,15 +1143,16 @@
     return await outDoc.save();
   }
 
-  function getCroppedCoverImagePngBytes(img, rotationDeg, targetW, targetH) {
-    const rotCanvas = getRotatedImageCanvas(img, rotationDeg);
+  function getCroppedCanvasJpegBytes(srcCanvas, targetW, targetH) {
     const outCanvas = document.createElement('canvas');
     const scale = Math.min(2000 / Math.max(targetW, targetH), 3);
-    outCanvas.width = Math.round(targetW * scale);
-    outCanvas.height = Math.round(targetH * scale);
+    outCanvas.width = Math.max(1, Math.round(targetW * scale));
+    outCanvas.height = Math.max(1, Math.round(targetH * scale));
     const ctx = outCanvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, outCanvas.width, outCanvas.height);
 
-    const srcRatio = rotCanvas.width / rotCanvas.height;
+    const srcRatio = srcCanvas.width / srcCanvas.height;
     const boxRatio = outCanvas.width / outCanvas.height;
     let drawW, drawH;
     if (srcRatio > boxRatio) {
@@ -1113,34 +1164,20 @@
     }
     const drawX = (outCanvas.width - drawW) / 2;
     const drawY = (outCanvas.height - drawH) / 2;
-    ctx.drawImage(rotCanvas, drawX, drawY, drawW, drawH);
+    ctx.drawImage(srcCanvas, drawX, drawY, drawW, drawH);
 
-    return dataUrlToUint8Array(outCanvas.toDataURL('image/png'));
+    return dataUrlToUint8Array(outCanvas.toDataURL('image/jpeg', 0.92));
   }
 
-  // Offline / Fallback Pure-JS 2-Page PDF Builder (renders high-DPI canvases into a valid 2-page PDF)
-  async function buildHighResCanvasPdfFallback() {
-    const geom = getSheetGeometry();
-    const frontCanvas = document.createElement('canvas');
-    const backCanvas = document.createElement('canvas');
+  function buildMultiPageCanvasPdfFallback(sheets) {
+    const pageCanvases = sheets.map((sheet) => {
+      const c = document.createElement('canvas');
+      drawA4SheetOnCanvas(c, sheet, 2.2);
+      return c;
+    });
 
-    drawSheetCanvas(frontCanvas, geom, geom.frontRects, 'front', 2.5, false);
-    drawSheetCanvas(backCanvas, geom, geom.backRects, 'back', 2.5, false);
-
-    return buildMinimalTwoPageJpegPdf(
-      frontCanvas,
-      backCanvas,
-      geom.sheetWidth,
-      geom.sheetHeight
-    );
-  }
-
-  function buildMinimalTwoPageJpegPdf(canvas1, canvas2, pageWidthPt, pageHeightPt) {
-    const jpg1 = dataUrlToUint8Array(canvas1.toDataURL('image/jpeg', 0.94));
-    const jpg2 = dataUrlToUint8Array(canvas2.toDataURL('image/jpeg', 0.94));
-    const wPt = pageWidthPt.toFixed(2);
-    const hPt = pageHeightPt.toFixed(2);
-
+    const wPt = A4_LANDSCAPE.width.toFixed(2);
+    const hPt = A4_LANDSCAPE.height.toFixed(2);
     const enc = new TextEncoder();
     const chunks = [];
     const offsets = [];
@@ -1160,71 +1197,58 @@
       pushStr(`${id} 0 obj\n`);
     }
     function endObj() {
-      pushStr(`\nendobj\n`);
+      pushStr('\nendobj\n');
     }
 
     pushStr('%PDF-1.4\n%\xFF\xFF\xFF\xFF\n');
 
-    // 1: Catalog
     startObj(1);
     pushStr('<< /Type /Catalog /Pages 2 0 R >>');
     endObj();
 
-    // 2: Pages
+    const pageObjIds = pageCanvases.map((_, idx) => 3 + idx * 3);
+
     startObj(2);
-    pushStr('<< /Type /Pages /Kids [3 0 R 6 0 R] /Count 2 >>');
-    endObj();
-
-    // 3: Page 1 (Front)
-    startObj(3);
     pushStr(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${wPt} ${hPt}] /Resources << /XObject << /Im1 4 0 R >> >> /Contents 5 0 R >>`
+      `<< /Type /Pages /Kids [${pageObjIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pageCanvases.length} >>`
     );
     endObj();
 
-    // 4: Image 1 XObject
-    startObj(4);
-    pushStr(
-      `<< /Type /XObject /Subtype /Image /Width ${canvas1.width} /Height ${canvas1.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg1.length} >>\nstream\n`
-    );
-    pushBytes(jpg1);
-    pushStr('\nendstream');
-    endObj();
+    pageCanvases.forEach((canvas, idx) => {
+      const pageId = 3 + idx * 3;
+      const imgId = pageId + 1;
+      const contentId = pageId + 2;
+      const jpg = dataUrlToUint8Array(canvas.toDataURL('image/jpeg', 0.92));
 
-    // 5: Page 1 Contents
-    const content1 = `q ${wPt} 0 0 ${hPt} 0 0 cm /Im1 Do Q`;
-    startObj(5);
-    pushStr(`<< /Length ${content1.length} >>\nstream\n${content1}\nendstream`);
-    endObj();
+      startObj(pageId);
+      pushStr(
+        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${wPt} ${hPt}] /Resources << /XObject << /Im${idx} ${imgId} 0 R >> >> /Contents ${contentId} 0 R >>`
+      );
+      endObj();
 
-    // 6: Page 2 (Back)
-    startObj(6);
-    pushStr(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${wPt} ${hPt}] /Resources << /XObject << /Im2 7 0 R >> >> /Contents 8 0 R >>`
-    );
-    endObj();
+      startObj(imgId);
+      pushStr(
+        `<< /Type /XObject /Subtype /Image /Width ${canvas.width} /Height ${canvas.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>\nstream\n`
+      );
+      pushBytes(jpg);
+      pushStr('\nendstream');
+      endObj();
 
-    // 7: Image 2 XObject
-    startObj(7);
-    pushStr(
-      `<< /Type /XObject /Subtype /Image /Width ${canvas2.width} /Height ${canvas2.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg2.length} >>\nstream\n`
-    );
-    pushBytes(jpg2);
-    pushStr('\nendstream');
-    endObj();
+      const content = `q ${wPt} 0 0 ${hPt} 0 0 cm /Im${idx} Do Q`;
+      startObj(contentId);
+      pushStr(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
+      endObj();
+    });
 
-    // 8: Page 2 Contents
-    const content2 = `q ${wPt} 0 0 ${hPt} 0 0 cm /Im2 Do Q`;
-    startObj(8);
-    pushStr(`<< /Length ${content2.length} >>\nstream\n${content2}\nendstream`);
-    endObj();
-
+    const totalObjs = 2 + pageCanvases.length * 3;
     const xrefOffset = byteLength;
-    pushStr('xref\n0 9\n0000000000 65535 f \n');
-    for (let i = 1; i <= 8; i++) {
+    pushStr(`xref\n0 ${totalObjs + 1}\n0000000000 65535 f \n`);
+    for (let i = 1; i <= totalObjs; i++) {
       pushStr(String(offsets[i]).padStart(10, '0') + ' 00000 n \n');
     }
-    pushStr(`trailer\n<< /Size 9 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
+    pushStr(
+      `trailer\n<< /Size ${totalObjs + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`
+    );
 
     const out = new Uint8Array(byteLength);
     let pos = 0;
@@ -1235,44 +1259,55 @@
     return out;
   }
 
-  // Generate 3 realistic sample vertical PDF pages + 1 sample Backside Image for instant testing
+  // Sample Demo Loader: Generates 3 DIN A4 PDF pages + 6 sample images
   async function loadSampleDemo() {
     try {
       hideStatus();
-      const colors = [
-        { accent: '#2563eb', light: '#dbeafe', title: 'Dokument Seite 1', subtitle: 'Übersicht & Einleitung' },
-        { accent: '#7c3aed', light: '#ede9fe', title: 'Dokument Seite 2', subtitle: 'Angaben & Daten' },
-        { accent: '#d97706', light: '#fef3c7', title: 'Dokument Seite 3', subtitle: 'Zusammenfassung & Hinweise' }
+      state.items = [];
+
+      const docThemes = [
+        { accent: '#2563eb', light: '#dbeafe', subtitle: 'Antrag & Übersicht (DIN A4)' },
+        { accent: '#7c3aed', light: '#ede9fe', subtitle: 'Angaben & Datenblatt (DIN A4)' },
+        { accent: '#d97706', light: '#fef3c7', subtitle: 'Unterschrift & Beiblatt (DIN A4)' }
       ];
 
-      for (let i = 0; i < 3; i++) {
-        const sampleBytes = await createSampleSinglePagePdf(i + 1, colors[i]);
-        await loadPdfBytesIntoSlot(i, sampleBytes, `beispiel-seite-${i + 1}.pdf`, 0);
+      for (let i = 0; i < docThemes.length; i++) {
+        const pdfBytes = await createSampleSinglePagePdf(i + 1, docThemes[i]);
+        await addPdfBytesItems(pdfBytes, `Beispiel-Brief-${i + 1}.pdf`);
       }
 
-      // Create a sample backside image
-      const sampleImgDataUrl = createSampleBacksideImageDataUrl();
-      const img = await loadImageElement(sampleImgDataUrl);
-      state.imageSlot.hasImage = true;
-      state.imageSlot.fileName = 'rueckseite-motiv.png';
-      state.imageSlot.imgElement = img;
-      state.imageSlot.rotation = 0;
+      const imgColors = [
+        ['#065f46', '#059669', 'Foto / Ausweis 1'],
+        ['#1e40af', '#3b82f6', 'Foto / Beleg 2'],
+        ['#6b21a8', '#9333ea', 'Scan / Nachweis 3'],
+        ['#9a3412', '#ea580c', 'Anhang Foto 4'],
+        ['#0f766e', '#14b8a6', 'Anhang Foto 5'],
+        ['#be123c', '#f43f5e', 'Anhang Foto 6']
+      ];
 
-      els.imageThumb.src = sampleImgDataUrl;
-      els.imageThumb.style.transform = 'rotate(0deg)';
-      els.slotCardImage.classList.add('has-file');
-      els.imageEmpty.hidden = true;
-      els.imagePreviewWrap.hidden = false;
-      els.imageFooter.hidden = false;
-      els.clearImageBtn.hidden = false;
-      els.imageFileName.textContent = 'rueckseite-motiv.png';
+      for (let i = 0; i < imgColors.length; i++) {
+        const [c1, c2, title] = imgColors[i];
+        const canvas = createSampleImageCanvas(i + 1, c1, c2, title);
+        state.items.push({
+          id: nextItemId++,
+          kind: 'img',
+          sourceType: 'image',
+          label: `Beispiel-Foto-${i + 1}.png`,
+          fileName: `Beispiel-Foto-${i + 1}.png`,
+          pdfBytes: null,
+          pageIndex: 0,
+          previewCanvas: canvas,
+          rotation: 0
+        });
+      }
 
-      updateUploadProgress();
-      renderLiveSheets();
-      showStatus('3 Beispiel-PDF-Seiten und 1 Rückseitenbild geladen! Klicken Sie auf „Kombiniertes PDF herunterladen“, um die Datei zu exportieren.');
+      renderAll();
+      showStatus(
+        'Beispiel geladen: 3 Briefe (DIN A4) und 6 Fotos! Sehen Sie rechts, wie je 2 Briefe nebeneinander liegen und die Fotos klein zusammengestellt wurden.'
+      );
     } catch (err) {
       console.error('Fehler beim Laden der Beispieldateien:', err);
-      showStatus('Beispieldateien konnten nicht erstellt werden.', true);
+      showStatus('Beispieldateien konnten nicht geladen werden.', true);
     }
   }
 
@@ -1280,14 +1315,13 @@
     if (window.PDFLib) {
       const { PDFDocument, StandardFonts, rgb } = window.PDFLib;
       const doc = await PDFDocument.create();
-      const page = doc.addPage([595.28, 841.89]); // Portrait A4
+      const page = doc.addPage([595.28, 841.89]);
       const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
       const fontReg = await doc.embedFont(StandardFonts.Helvetica);
 
       const accentRgb = hexToRgb01(theme.accent);
       const lightRgb = hexToRgb01(theme.light);
 
-      // Border & Header Banner
       page.drawRectangle({
         x: 28,
         y: 28,
@@ -1305,9 +1339,9 @@
         color: rgb(lightRgb.r, lightRgb.g, lightRgb.b)
       });
 
-      page.drawText(`HOCHFORMAT PDF-SEITE ${pageNum}`, {
+      page.drawText(`BRIEF / DOKUMENT ${pageNum}`, {
         x: 56,
-        y: 760,
+        y: 758,
         size: 28,
         font: fontBold,
         color: rgb(accentRgb.r, accentRgb.g, accentRgb.b)
@@ -1321,14 +1355,13 @@
         color: rgb(0.25, 0.3, 0.38)
       });
 
-      // Simulated document paragraphs and boxes
       for (let row = 0; row < 6; row++) {
         const yPos = 610 - row * 85;
         page.drawRectangle({
           x: 56,
           y: yPos,
           width: 483,
-          height: 16,
+          height: 15,
           color: rgb(0.2, 0.25, 0.33)
         });
         page.drawRectangle({
@@ -1347,72 +1380,46 @@
         });
       }
 
-      page.drawText(`Seite ${pageNum} von 3 • Skaliert auf Querformat-Blatt`, {
+      page.drawText(`Original DIN A4 • Wird automatisch zu zweit nebeneinander gelegt`, {
         x: 56,
         y: 55,
-        size: 13,
+        size: 12,
         font: fontBold,
         color: rgb(0.4, 0.45, 0.52)
       });
 
       return await doc.save();
     }
-
-    // Fallback empty byte array if PDFLib not loaded
     return new Uint8Array([37, 80, 68, 70]);
   }
 
-  function createSampleBacksideImageDataUrl() {
+  function createSampleImageCanvas(num, c1, c2, title) {
     const c = document.createElement('canvas');
-    c.width = 1200;
-    c.height = 850;
+    c.width = 720;
+    c.height = 520;
     const ctx = c.getContext('2d');
 
     const grad = ctx.createLinearGradient(0, 0, c.width, c.height);
-    grad.addColorStop(0, '#065f46');
-    grad.addColorStop(0.5, '#059669');
-    grad.addColorStop(1, '#0d9488');
+    grad.addColorStop(0, c1);
+    grad.addColorStop(1, c2);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, c.width, c.height);
 
-    // Decorative circles
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.beginPath();
-    ctx.arc(220, 200, 260, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(980, 680, 310, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Inner frame
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-    ctx.lineWidth = 6;
-    ctx.strokeRect(48, 48, c.width - 96, c.height - 96);
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(26, 26, c.width - 52, c.height - 52);
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 64px -apple-system, sans-serif';
+    ctx.font = 'bold 42px -apple-system, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('RÜCKSEITENBILD (SEITE 2)', c.width / 2, c.height / 2 - 20);
+    ctx.fillText(`FOTO ${num}`, c.width / 2, c.height / 2 - 14);
 
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
-    ctx.font = '32px -apple-system, sans-serif';
-    ctx.fillText('Wird auf die Rückseite des kombinierten PDF-Blatts gedruckt', c.width / 2, c.height / 2 + 45);
-
-    return c.toDataURL('image/png');
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.font = '26px -apple-system, sans-serif';
+    ctx.fillText(title, c.width / 2, c.height / 2 + 34);
+    return c;
   }
 
-  function resetAll() {
-    for (let i = 0; i < 3; i++) {
-      state.pdfSlots[i] = createEmptyPdfSlot(i);
-      updateSlotDom(i);
-    }
-    clearImageSlot();
-    hideStatus();
-    updateUploadProgress();
-    renderLiveSheets();
-  }
-
-  // Utility helpers
   function readFileAsDataURL(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -1461,7 +1468,6 @@
     els.statusBanner.hidden = true;
   }
 
-  // Start app once DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

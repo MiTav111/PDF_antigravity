@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Wiedereintritt - PDF</title>
+  <title>DIN A4 PDF &amp; Bilder Zusammenfügen</title>
   <link rel="stylesheet" href="styles.css" />
   <!-- pdf-lib for lossless vector PDF merging & image embedding -->
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js" defer></script>
@@ -15,299 +15,383 @@
   <header class="app-header">
     <div class="header-inner">
       <div class="brand">
-        <img src="logo.png" alt="Katholische Kirche Kärnten Logo" class="brand-logo" />
+        <img src="logo.png" alt="Logo" class="brand-logo" onerror="this.style.display='none'" />
         <div class="brand-divider"></div>
         <div>
-          <h1>Wiedereintritt - PDF</h1>
-          <p class="subtitle">3 PDF-Seiten nebeneinander auf ein Querformat-Blatt platzieren + Rückseitenbild hinzufügen</p>
+          <h1>Dokumente &amp; Fotos platzsparend auf DIN A4</h1>
+          <p class="subtitle">Einfach Dateien auswählen – das Programm legt automatisch 2 Briefe nebeneinander und verkleinert Fotos</p>
         </div>
       </div>
       <div class="header-actions">
-        <button id="loadDemoBtn" class="btn btn-secondary" type="button" title="3 Beispiel-PDF-Seiten und ein Beispielbild zum sofortigen Testen laden">
+        <button id="loadDemoBtn" class="btn btn-secondary" type="button" title="Lädt Beispiel-Briefe und Beispiel-Fotos, damit Sie das Programm sofort ausprobieren können">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
           </svg>
-          Beispieldateien laden
+          Beispiel ausprobieren
         </button>
         <button id="resetAllBtn" class="btn btn-ghost" type="button">
-          Alles zurücksetzen
+          Alles leeren
         </button>
       </div>
     </div>
   </header>
 
-  <main class="app-main">
-    <!-- Left Column: Inputs & Layout Controls -->
-    <section class="controls-column">
+  <!-- Visual Step-by-Step Guide Banner with Explanatory Graphics -->
+  <section class="explainer-section" aria-label="Anleitung in 3 einfachen Schritten">
+    <div class="explainer-inner">
+      <div class="explainer-header">
+        <span class="explainer-pill">Kinderleichte Anleitung</span>
+        <h2>So funktioniert es in 3 einfachen Schritten</h2>
+      </div>
 
-      <!-- Quick Batch Dropzone -->
-      <div class="card batch-card" id="batchDropzone">
-        <input type="file" id="batchFileInput" multiple accept="application/pdf,image/*" hidden />
-        <div class="batch-content">
-          <div class="batch-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
+      <div class="explainer-grid">
+        <!-- Step 1 Graphic Card -->
+        <div class="explainer-card">
+          <div class="explainer-badge">Schritt 1</div>
+          <div class="explainer-graphic">
+            <svg viewBox="0 0 220 110" width="220" height="110" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Blue Dropzone Box -->
+              <rect x="115" y="18" width="92" height="74" rx="10" fill="#EFF6FF" stroke="#3B82F6" stroke-width="2" stroke-dasharray="5 4"/>
+              <path d="M161 68V42M161 42L152 51M161 42L170 51" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <text x="161" y="81" text-anchor="middle" fill="#1E40AF" font-size="9" font-weight="700" font-family="sans-serif">Hier ablegen</text>
+
+              <!-- PDF Document Icon -->
+              <g transform="translate(14, 16) rotate(-6)">
+                <rect x="0" y="0" width="44" height="58" rx="5" fill="#FFFFFF" stroke="#2563EB" stroke-width="2"/>
+                <rect x="6" y="8" width="24" height="6" rx="2" fill="#DBEAFE"/>
+                <line x1="6" y1="22" x2="36" y2="22" stroke="#93C5FD" stroke-width="2" stroke-linecap="round"/>
+                <line x1="6" y1="29" x2="34" y2="29" stroke="#93C5FD" stroke-width="2" stroke-linecap="round"/>
+                <line x1="6" y1="36" x2="28" y2="36" stroke="#93C5FD" stroke-width="2" stroke-linecap="round"/>
+                <rect x="6" y="43" width="22" height="10" rx="2" fill="#2563EB"/>
+                <text x="17" y="50.5" text-anchor="middle" fill="#FFFFFF" font-size="6.5" font-weight="700" font-family="sans-serif">PDF</text>
+              </g>
+
+              <!-- Photo Icon -->
+              <g transform="translate(46, 38) rotate(5)">
+                <rect x="0" y="0" width="48" height="40" rx="5" fill="#FFFFFF" stroke="#059669" stroke-width="2"/>
+                <circle cx="14" cy="13" r="4" fill="#34D399"/>
+                <path d="M5 34L17 21L26 29L33 22L43 34H5Z" fill="#10B981"/>
+              </g>
+
+              <!-- Curved Arrow -->
+              <path d="M98 55H118" stroke="#64748B" stroke-width="2" stroke-dasharray="3 3"/>
+              <polygon points="120,55 114,51 114,59" fill="#64748B"/>
             </svg>
           </div>
-          <div class="batch-text">
-            <strong>Schnell-Upload: 3-seitiges PDF (oder mehrere PDFs + 1 Bild) hier ablegen</strong>
-            <span>Befüllt automatisch PDF-Seite 1, 2, 3 sowie das Rückseitenbild</span>
+          <h3>1. Briefe &amp; Fotos auswählen</h3>
+          <p>Wählen Sie bis zu 20 (oder mehr) PDF-Dokumente und Fotos von Ihrem Computer aus oder ziehen Sie sie mit der Maus in das Feld.</p>
+        </div>
+
+        <!-- Step 2 Graphic Card -->
+        <div class="explainer-card">
+          <div class="explainer-badge badge-purple">Schritt 2</div>
+          <div class="explainer-graphic">
+            <svg viewBox="0 0 220 110" width="220" height="110" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Sheet 1: 2 DIN A4 side by side -->
+              <rect x="10" y="20" width="92" height="66" rx="5" fill="#FFFFFF" stroke="#475569" stroke-width="2"/>
+              <rect x="16" y="26" width="37" height="54" rx="3" fill="#DBEAFE" stroke="#3B82F6" stroke-width="1.5"/>
+              <text x="34.5" y="50" text-anchor="middle" fill="#1E40AF" font-size="7.5" font-weight="700" font-family="sans-serif">Brief 1</text>
+              <text x="34.5" y="60" text-anchor="middle" fill="#3B82F6" font-size="6.5" font-family="sans-serif">(DIN A4)</text>
+
+              <line x1="56" y1="23" x2="56" y2="83" stroke="#94A3B8" stroke-width="1" stroke-dasharray="3 2"/>
+
+              <rect x="59" y="26" width="37" height="54" rx="3" fill="#DBEAFE" stroke="#3B82F6" stroke-width="1.5"/>
+              <text x="77.5" y="50" text-anchor="middle" fill="#1E40AF" font-size="7.5" font-weight="700" font-family="sans-serif">Brief 2</text>
+              <text x="77.5" y="60" text-anchor="middle" fill="#3B82F6" font-size="6.5" font-family="sans-serif">(DIN A4)</text>
+              <text x="56" y="99" text-anchor="middle" fill="#334155" font-size="8" font-weight="600" font-family="sans-serif">2 Briefe auf 1 Blatt</text>
+
+              <!-- Sheet 2: Compact Photos Grid -->
+              <rect x="118" y="20" width="92" height="66" rx="5" fill="#FFFFFF" stroke="#475569" stroke-width="2"/>
+              <!-- 3x2 mini photos -->
+              <rect x="124" y="26" width="24" height="24" rx="2.5" fill="#D1FAE5" stroke="#10B981" stroke-width="1.2"/>
+              <rect x="152" y="26" width="24" height="24" rx="2.5" fill="#D1FAE5" stroke="#10B981" stroke-width="1.2"/>
+              <rect x="180" y="26" width="24" height="24" rx="2.5" fill="#D1FAE5" stroke="#10B981" stroke-width="1.2"/>
+              <rect x="124" y="54" width="24" height="24" rx="2.5" fill="#D1FAE5" stroke="#10B981" stroke-width="1.2"/>
+              <rect x="152" y="54" width="24" height="24" rx="2.5" fill="#D1FAE5" stroke="#10B981" stroke-width="1.2"/>
+              <rect x="180" y="54" width="24" height="24" rx="2.5" fill="#D1FAE5" stroke="#10B981" stroke-width="1.2"/>
+              <text x="164" y="99" text-anchor="middle" fill="#065F46" font-size="8" font-weight="600" font-family="sans-serif">Fotos klein &amp; sparsam</text>
+            </svg>
           </div>
-          <button type="button" class="btn btn-sm btn-outline" id="batchBrowseBtn">Dateien auswählen</button>
+          <h3>2. Platzsparende Anordnung wählen</h3>
+          <p>Je <strong>2 DIN-A4-Briefe</strong> kommen nebeneinander auf 1 DIN-A4-Blatt. Ihre <strong>Fotos</strong> werden verkleinert, sodass viele auf 1 Blatt passen.</p>
+        </div>
+
+        <!-- Step 3 Graphic Card -->
+        <div class="explainer-card">
+          <div class="explainer-badge badge-green">Schritt 3</div>
+          <div class="explainer-graphic">
+            <svg viewBox="0 0 220 110" width="220" height="110" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Finished Sheet Preview -->
+              <rect x="34" y="18" width="96" height="68" rx="6" fill="#FFFFFF" stroke="#2563EB" stroke-width="2"/>
+              <rect x="41" y="25" width="38" height="54" rx="2" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1.2"/>
+              <rect x="84" y="25" width="39" height="25" rx="2" fill="#ECFDF5" stroke="#6EE7B7" stroke-width="1.2"/>
+              <rect x="84" y="54" width="39" height="25" rx="2" fill="#ECFDF5" stroke="#6EE7B7" stroke-width="1.2"/>
+
+              <!-- Green Checkmark Circle + Download Button Graphic -->
+              <circle cx="130" cy="24" r="13" fill="#10B981" stroke="#FFFFFF" stroke-width="2.5"/>
+              <path d="M124 24L128 28L136 20" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+
+              <!-- Download / Print Pill -->
+              <rect x="115" y="56" width="84" height="28" rx="7" fill="#2563EB"/>
+              <path d="M131 65V75M131 75L127 71M131 75L135 71" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <text x="164" y="73.5" text-anchor="middle" fill="#FFFFFF" font-size="8.5" font-weight="700" font-family="sans-serif">Speichern</text>
+            </svg>
+          </div>
+          <h3>3. Fertiges PDF speichern &amp; drucken</h3>
+          <p>Prüfen Sie rechts die Vorschau aller Blätter und klicken Sie auf den blauen Knopf <strong>„Fertiges PDF speichern“</strong> oder <strong>„Drucken“</strong>.</p>
         </div>
       </div>
+    </div>
+  </section>
 
-      <!-- Step 1: Upload 3 PDF Pages & 1 Backside Image -->
+  <main class="app-main">
+    <!-- Left Column: Step 1 & Step 2 -->
+    <section class="controls-column">
+
+      <!-- SCHRITT 1: Dateien auswählen -->
       <div class="card">
         <div class="card-header">
-          <h2>1. 3 PDF-Seiten &amp; Rückseitenbild hochladen</h2>
-          <span class="badge" id="uploadStatusBadge">0 / 4 Bereit</span>
-        </div>
-
-        <div class="slots-grid">
-          <!-- PDF Slot 1 -->
-          <div class="upload-slot pdf-slot" data-slot="0" id="slotCard0">
-            <input type="file" id="fileInput0" accept="application/pdf,.pdf" hidden />
-            <div class="slot-top">
-              <span class="slot-number">PDF-Seite 1</span>
-              <span class="slot-target-badge" id="slotBadge0">Vorderseite • Links (1/3)</span>
-              <button type="button" class="slot-remove" data-clear-slot="0" title="Datei entfernen" hidden>&times;</button>
-            </div>
-            <div class="slot-body" id="slotDrop0">
-              <div class="slot-empty" id="slotEmpty0">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="12" y1="18" x2="12" y2="12"></line>
-                  <line x1="9" y1="15" x2="15" y2="15"></line>
-                </svg>
-                <span>Klicken oder <strong>1. PDF</strong> ablegen</span>
-              </div>
-              <div class="slot-preview-wrap" id="slotPreviewWrap0" hidden>
-                <canvas id="slotCanvas0"></canvas>
-              </div>
-            </div>
-            <div class="slot-footer" id="slotFooter0" hidden>
-              <span class="file-name" id="fileName0">dokument.pdf</span>
-              <div class="page-selector" id="pageSelector0" hidden>
-                <button type="button" class="page-btn" data-page-dir="-1" data-slot="0" title="Vorherige Seite">&lsaquo;</button>
-                <span id="pageLabel0">S. 1/1</span>
-                <button type="button" class="page-btn" data-page-dir="1" data-slot="0" title="Nächste Seite">&rsaquo;</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- PDF Slot 2 -->
-          <div class="upload-slot pdf-slot" data-slot="1" id="slotCard1">
-            <input type="file" id="fileInput1" accept="application/pdf,.pdf" hidden />
-            <div class="slot-top">
-              <span class="slot-number">PDF-Seite 2</span>
-              <span class="slot-target-badge" id="slotBadge1">Vorderseite • Mitte (2/3)</span>
-              <button type="button" class="slot-remove" data-clear-slot="1" title="Datei entfernen" hidden>&times;</button>
-            </div>
-            <div class="slot-body" id="slotDrop1">
-              <div class="slot-empty" id="slotEmpty1">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="12" y1="18" x2="12" y2="12"></line>
-                  <line x1="9" y1="15" x2="15" y2="15"></line>
-                </svg>
-                <span>Klicken oder <strong>2. PDF</strong> ablegen</span>
-              </div>
-              <div class="slot-preview-wrap" id="slotPreviewWrap1" hidden>
-                <canvas id="slotCanvas1"></canvas>
-              </div>
-            </div>
-            <div class="slot-footer" id="slotFooter1" hidden>
-              <span class="file-name" id="fileName1">dokument.pdf</span>
-              <div class="page-selector" id="pageSelector1" hidden>
-                <button type="button" class="page-btn" data-page-dir="-1" data-slot="1" title="Vorherige Seite">&lsaquo;</button>
-                <span id="pageLabel1">S. 1/1</span>
-                <button type="button" class="page-btn" data-page-dir="1" data-slot="1" title="Nächste Seite">&rsaquo;</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- PDF Slot 3 -->
-          <div class="upload-slot pdf-slot" data-slot="2" id="slotCard2">
-            <input type="file" id="fileInput2" accept="application/pdf,.pdf" hidden />
-            <div class="slot-top">
-              <span class="slot-number">PDF-Seite 3</span>
-              <span class="slot-target-badge" id="slotBadge2">Vorderseite • Rechts (3/3)</span>
-              <button type="button" class="slot-remove" data-clear-slot="2" title="Datei entfernen" hidden>&times;</button>
-            </div>
-            <div class="slot-body" id="slotDrop2">
-              <div class="slot-empty" id="slotEmpty2">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="12" y1="18" x2="12" y2="12"></line>
-                  <line x1="9" y1="15" x2="15" y2="15"></line>
-                </svg>
-                <span>Klicken oder <strong>3. PDF</strong> ablegen</span>
-              </div>
-              <div class="slot-preview-wrap" id="slotPreviewWrap2" hidden>
-                <canvas id="slotCanvas2"></canvas>
-              </div>
-            </div>
-            <div class="slot-footer" id="slotFooter2" hidden>
-              <span class="file-name" id="fileName2">dokument.pdf</span>
-              <div class="page-selector" id="pageSelector2" hidden>
-                <button type="button" class="page-btn" data-page-dir="-1" data-slot="2" title="Vorherige Seite">&lsaquo;</button>
-                <span id="pageLabel2">S. 1/1</span>
-                <button type="button" class="page-btn" data-page-dir="1" data-slot="2" title="Nächste Seite">&rsaquo;</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Slot 4: Backside Image Upload -->
-          <div class="upload-slot image-slot" id="slotCardImage">
-            <input type="file" id="imageFileInput" accept="image/*" hidden />
-            <div class="slot-top">
-              <span class="slot-number image-label">Rückseitenbild</span>
-              <span class="slot-target-badge badge-image" id="slotBadgeImage">Seite 2 • Rückseite</span>
-              <button type="button" class="slot-remove" id="clearImageBtn" title="Bild entfernen" hidden>&times;</button>
-            </div>
-            <div class="slot-body" id="imageDrop">
-              <div class="slot-empty" id="imageEmpty">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                  <polyline points="21 15 16 10 5 21"></polyline>
-                </svg>
-                <span>Klicken oder <strong>Bild</strong> ablegen (PNG/JPG/WebP)</span>
-              </div>
-              <div class="slot-preview-wrap" id="imagePreviewWrap" hidden>
-                <img id="imageThumb" alt="Vorschau Rückseitenbild" />
-              </div>
-            </div>
-            <div class="slot-footer" id="imageFooter" hidden>
-              <span class="file-name" id="imageFileName">bild.png</span>
-              <button type="button" class="page-btn rotate-btn" id="rotateImageBtn" title="Bild um 90° drehen">
-                &#8635; 90° drehen
-              </button>
+          <div class="step-title-row">
+            <span class="step-circle">1</span>
+            <div>
+              <h2>Schritt 1: Welche Dateien möchten Sie zusammenfügen?</h2>
+              <p class="card-subtext">Laden Sie PDFs, gescannte Briefe oder Fotos hoch (gerne bis zu 20 Dateien auf einmal)</p>
             </div>
           </div>
         </div>
+
+        <!-- Big Visual Dropzone -->
+        <div class="batch-card" id="batchDropzone">
+          <input
+            type="file"
+            id="batchFileInput"
+            multiple
+            accept="application/pdf,.pdf,image/*,.txt,.csv,.md,.html,.htm,.json,.xml"
+            hidden
+          />
+          <div class="batch-content">
+            <div class="batch-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            </div>
+            <div class="batch-text">
+              <strong>Hier klicken oder Dateien mit der Maus hierher ziehen</strong>
+              <span>Sie können mehrere PDFs und Fotos gleichzeitig markieren und öffnen</span>
+              <div class="supported-pills">
+                <span class="type-pill pill-doc">📄 PDF-Dokumente &amp; Briefe</span>
+                <span class="type-pill pill-img">🖼️ Fotos &amp; Bilder (JPG, PNG…)</span>
+                <span class="type-pill pill-txt">📝 Textdateien</span>
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary" id="batchBrowseBtn">
+              Dateien auswählen
+            </button>
+          </div>
+        </div>
+
+        <!-- Queue Header & Visual Legend -->
+        <div class="queue-header">
+          <div class="queue-title">
+            <strong>Ihre ausgewählten Seiten &amp; Bilder:</strong>
+            <span class="queue-hint">Tipp: Klicken Sie auf das farbige Schild einer Karte, um zwischen „Groß (Brief)“ und „Klein (Foto)“ zu wechseln.</span>
+          </div>
+          <div class="badge-group">
+            <span class="badge" id="pdfCountBadge">0 Briefe (DIN A4)</span>
+            <span class="badge badge-img" id="imgCountBadge">0 Fotos (klein)</span>
+          </div>
+        </div>
+
+        <!-- Empty Queue State -->
+        <div id="emptyQueueState" class="empty-queue">
+          <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12" y2="12"></line>
+            <line x1="9" y1="15" x2="15" y2="15"></line>
+          </svg>
+          <p><strong>Noch keine Dateien ausgewählt</strong></p>
+          <span>Klicken Sie oben auf <strong>„Dateien auswählen“</strong> oder rechts oben auf <strong>„Beispiel ausprobieren“</strong>.</span>
+        </div>
+
+        <!-- Dynamic Grid of Uploaded Items -->
+        <div id="itemsGrid" class="items-grid" hidden></div>
       </div>
 
-      <!-- Step 2: Layout & Backside Configuration -->
+      <!-- SCHRITT 2: Wie soll alles auf die DIN-A4-Blätter verteilt werden? -->
       <div class="card">
         <div class="card-header">
-          <h2>2. Layout- &amp; Rückseiten-Optionen</h2>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Seitenanordnung</label>
-          <div class="layout-selector">
-            <label class="layout-option active" id="layoutOpt3Up">
-              <input type="radio" name="layoutMode" value="three-up-landscape" checked />
-              <div class="layout-diagram">
-                <div class="mini-sheet three">
-                  <span>1</span><span>2</span><span>3</span>
-                </div>
-                <span class="plus-sign">+</span>
-                <div class="mini-sheet back full">
-                  <span class="img-chip">RÜCKSEITE</span>
-                </div>
-              </div>
-              <div class="layout-desc">
-                <strong>Modus 2: 3 Hochformat-PDFs auf 1 Querformat-Seite + Bild auf Rückseite (Standard)</strong>
-                <span>Vorderseite: Alle 3 PDFs nebeneinander skaliert • Rückseite: Bild (Vollbild oder 3× wiederholt)</span>
-              </div>
-            </label>
-
-            <label class="layout-option" id="layoutOpt2Up">
-              <input type="radio" name="layoutMode" value="two-up-duplex" />
-              <div class="layout-diagram">
-                <div class="mini-sheet">
-                  <span>PDF 1</span><span>PDF 2</span>
-                </div>
-                <span class="plus-sign">+</span>
-                <div class="mini-sheet back">
-                  <span>PDF 3</span><span class="img-chip">BILD</span>
-                </div>
-              </div>
-              <div class="layout-desc">
-                <strong>Modus 1: 2 Hochformat-Seiten pro Querformat-Blatt</strong>
-                <span>Vorderseite: PDF 1 &amp; 2 nebeneinander • Rückseite: PDF 3 &amp; Bild nebeneinander</span>
-              </div>
-            </label>
-
-            <label class="layout-option" id="layoutOpt3UpPortrait">
-              <input type="radio" name="layoutMode" value="three-up-portrait" />
-              <div class="layout-diagram">
-                <div class="mini-sheet portrait-stack">
-                  <span>PDF 1</span><span>PDF 2</span><span>PDF 3</span>
-                </div>
-                <span class="plus-sign">+</span>
-                <div class="mini-sheet portrait-stack back">
-                  <span class="img-chip">BILD</span>
-                </div>
-              </div>
-              <div class="layout-desc">
-                <strong>Modus 3: 3 Seiten vertikal gestapelt (Hochformat) + Rückseitenbild</strong>
-                <span>Vorderseite: 3 horizontale Reihen • Rückseite: Vollbild oder 3× wiederholt</span>
-              </div>
-            </label>
+          <div class="step-title-row">
+            <span class="step-circle step-circle-purple">2</span>
+            <div>
+              <h2>Schritt 2: Wie groß sollen Briefe &amp; Fotos auf dem Blatt sein?</h2>
+              <p class="card-subtext">Die Standard-Einstellung ist bereits optimal voreingestellt – Sie können sie hier jederzeit anpassen</p>
+            </div>
           </div>
         </div>
 
-        <!-- Contextual Backside Sub-Options -->
+        <!-- Visual Option 1: PDF / Document pages per sheet -->
+        <div class="visual-setting-block">
+          <label class="form-label">A) Große Dokumente / PDFs: Wie viele nebeneinander auf 1 DIN-A4-Blatt?</label>
+          <div class="visual-choice-grid three-cols" id="pdfLayoutChoices">
+            <button type="button" class="visual-choice active" data-pdfs-per-page="2">
+              <svg viewBox="0 0 80 54" width="68" height="46">
+                <rect x="2" y="2" width="76" height="50" rx="4" fill="#fff" stroke="#64748b" stroke-width="1.8"/>
+                <rect x="7" y="7" width="31" height="40" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+                <rect x="42" y="7" width="31" height="40" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+              </svg>
+              <strong>2 nebeneinander</strong>
+              <span>Standard (gut lesbar)</span>
+            </button>
+
+            <button type="button" class="visual-choice" data-pdfs-per-page="3">
+              <svg viewBox="0 0 80 54" width="68" height="46">
+                <rect x="2" y="2" width="76" height="50" rx="4" fill="#fff" stroke="#64748b" stroke-width="1.8"/>
+                <rect x="6" y="7" width="20" height="40" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+                <rect x="30" y="7" width="20" height="40" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+                <rect x="54" y="7" width="20" height="40" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+              </svg>
+              <strong>3 nebeneinander</strong>
+              <span>Etwas schmaler</span>
+            </button>
+
+            <button type="button" class="visual-choice" data-pdfs-per-page="4">
+              <svg viewBox="0 0 80 54" width="68" height="46">
+                <rect x="2" y="2" width="76" height="50" rx="4" fill="#fff" stroke="#64748b" stroke-width="1.8"/>
+                <rect x="7" y="6" width="31" height="19" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+                <rect x="42" y="6" width="31" height="19" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+                <rect x="7" y="29" width="31" height="19" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+                <rect x="42" y="29" width="31" height="19" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+              </svg>
+              <strong>4 auf 1 Blatt</strong>
+              <span>2×2 Übersicht</span>
+            </button>
+          </div>
+          <!-- Hidden select kept in sync for accessibility -->
+          <select id="pdfsPerPageSelect" class="form-select" hidden>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+
+        <!-- Visual Option 2: Images per DIN A4 sheet -->
+        <div class="visual-setting-block">
+          <label class="form-label">B) Fotos &amp; Bilder: Wie viele sollen platzsparend auf 1 DIN-A4-Blatt passen?</label>
+          <div class="visual-choice-grid four-cols" id="imgLayoutChoices">
+            <button type="button" class="visual-choice" data-imgs-per-page="4">
+              <svg viewBox="0 0 80 54" width="64" height="44">
+                <rect x="2" y="2" width="76" height="50" rx="4" fill="#fff" stroke="#64748b" stroke-width="1.8"/>
+                <rect x="7" y="6" width="31" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
+                <rect x="42" y="6" width="31" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
+                <rect x="7" y="29" width="31" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
+                <rect x="42" y="29" width="31" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
+              </svg>
+              <strong>4 Fotos</strong>
+              <span>Mittelgroß (2×2)</span>
+            </button>
+
+            <button type="button" class="visual-choice active" data-imgs-per-page="6">
+              <svg viewBox="0 0 80 54" width="64" height="44">
+                <rect x="2" y="2" width="76" height="50" rx="4" fill="#fff" stroke="#64748b" stroke-width="1.8"/>
+                <rect x="6" y="6" width="20" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
+                <rect x="30" y="6" width="20" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
+                <rect x="54" y="6" width="20" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
+                <rect x="6" y="29" width="20" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
+                <rect x="30" y="29" width="20" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
+                <rect x="54" y="29" width="20" height="19" rx="2" fill="#d1fae5" stroke="#059669" stroke-width="1.4"/>
+              </svg>
+              <strong>6 Fotos</strong>
+              <span>Empfohlen (3×2)</span>
+            </button>
+
+            <button type="button" class="visual-choice" data-imgs-per-page="9">
+              <svg viewBox="0 0 80 54" width="64" height="44">
+                <rect x="2" y="2" width="76" height="50" rx="4" fill="#fff" stroke="#64748b" stroke-width="1.8"/>
+                <!-- 3x3 -->
+                <rect x="6" y="6" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
+                <rect x="30" y="6" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
+                <rect x="54" y="6" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
+                <rect x="6" y="21" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
+                <rect x="30" y="21" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
+                <rect x="54" y="21" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
+                <rect x="6" y="36" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
+                <rect x="30" y="36" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
+                <rect x="54" y="36" width="20" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1.2"/>
+              </svg>
+              <strong>9 Fotos</strong>
+              <span>Sehr sparsam (3×3)</span>
+            </button>
+
+            <button type="button" class="visual-choice" data-imgs-per-page="12">
+              <svg viewBox="0 0 80 54" width="64" height="44">
+                <rect x="2" y="2" width="76" height="50" rx="4" fill="#fff" stroke="#64748b" stroke-width="1.8"/>
+                <!-- 4x3 -->
+                <rect x="6" y="6" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+                <rect x="23.5" y="6" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+                <rect x="41" y="6" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+                <rect x="58.5" y="6" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+                <rect x="6" y="21" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+                <rect x="23.5" y="21" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+                <rect x="41" y="21" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+                <rect x="58.5" y="21" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+                <rect x="6" y="36" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+                <rect x="23.5" y="36" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+                <rect x="41" y="36" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+                <rect x="58.5" y="36" width="14.5" height="12" rx="1.5" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+              </svg>
+              <strong>12 Fotos</strong>
+              <span>Mini-Bilder (4×3)</span>
+            </button>
+          </div>
+          <select id="imagesPerPageSelect" class="form-select" hidden>
+            <option value="4">4</option>
+            <option value="6" selected>6</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="12">12</option>
+            <option value="2">2</option>
+          </select>
+        </div>
+
         <div class="options-grid">
-          <!-- For 3-Up Modes: Full image vs 3x repeated image -->
-          <div class="form-group" id="threeUpBackGroup">
-            <label class="form-label" for="threeUpBackMode">Rückseiten-Layout (Seite 2)</label>
-            <select id="threeUpBackMode" class="form-select">
-              <option value="full">1 ganzseitiges Bild auf der Rückseite</option>
-              <option value="repeat-3">Bild 3× wiederholen (passend hinter jeder PDF-Spalte)</option>
-            </select>
-          </div>
-
-          <!-- For 2-Up Duplex Mode: Which side is the image on the back? -->
-          <div class="form-group" id="twoUpBackGroup" hidden>
-            <label class="form-label" for="backSideOrder">Position auf der Rückseite (Seite 2)</label>
-            <select id="backSideOrder" class="form-select">
-              <option value="pdf3-left-img-right">Links: PDF-Seite 3  |  Rechts: Hochgeladenes Bild</option>
-              <option value="img-left-pdf3-right">Links: Hochgeladenes Bild  |  Rechts: PDF-Seite 3</option>
+          <!-- Free space behavior -->
+          <div class="form-group">
+            <label class="form-label" for="packModeSelect">Wenn auf dem letzten Brief-Blatt noch eine Hälfte frei ist:</label>
+            <select id="packModeSelect" class="form-select">
+              <option value="pack-free-half" selected>Freie Blatthälfte sofort für Fotos mitbenutzen (spart Papier)</option>
+              <option value="separate-page">Fotos immer auf einem neuen DIN-A4-Blatt beginnen</option>
             </select>
           </div>
 
           <!-- Image Scaling Mode -->
           <div class="form-group">
-            <label class="form-label" for="imageFitSelect">Bildanpassung</label>
+            <label class="form-label" for="imageFitSelect">Wie sollen Fotos eingepasst werden?</label>
             <select id="imageFitSelect" class="form-select">
-              <option value="contain">Ganzes Bild einpassen (Seitenverhältnis beibehalten)</option>
-              <option value="cover">Bereich komplett füllen (Überstand zuschneiden)</option>
-              <option value="stretch">Auf exakte Größe strecken</option>
-            </select>
-          </div>
-
-          <!-- Paper Format -->
-          <div class="form-group">
-            <label class="form-label" for="paperSizeSelect">Papierformat</label>
-            <select id="paperSizeSelect" class="form-select">
-              <option value="A4">A4 (297 × 210 mm Querformat)</option>
-              <option value="LETTER">US Letter (11 × 8.5 Zoll Querformat)</option>
+              <option value="contain" selected>Ganzes Foto zeigen (nichts abschneiden)</option>
+              <option value="cover">Kästchen komplett ausfüllen (Ränder beschneiden)</option>
             </select>
           </div>
 
           <!-- Margin & Cut Lines -->
-          <div class="form-group">
-            <label class="form-label" for="marginSelect">Seitenrand &amp; Hilfslinien</label>
+          <div class="form-group full-width">
+            <label class="form-label" for="marginSelect">Abstand zum Blattrand &amp; Extras:</label>
             <div class="inline-controls">
               <select id="marginSelect" class="form-select">
-                <option value="0">Kein Rand (0 mm — Randlos)</option>
-                <option value="14" selected>Kleiner Rand (5 mm)</option>
-                <option value="28">Mittlerer Rand (10 mm)</option>
-                <option value="42">Großer Rand (15 mm)</option>
+                <option value="0">Kein Rand (0 mm — bis zur Kante)</option>
+                <option value="14" selected>Normaler Druckrand (5 mm — Empfohlen)</option>
+                <option value="24">Breiterer Rand (8.5 mm)</option>
+                <option value="36">Großer Rand zum Abheften (13 mm)</option>
               </select>
-              <label class="checkbox-label" title="Gestrichelte Schnitt-/Falzlinien zwischen den Seiten zeichnen">
+              <label class="checkbox-label" title="Zeichnet feine gestrichelte Linien zwischen den Seiten zum Schneiden oder Falten">
                 <input type="checkbox" id="showGuidesCheckbox" checked />
-                <span>Schnitt-/Falzlinien</span>
+                <span>Trennlinien einzeichnen</span>
+              </label>
+              <label class="checkbox-label" title="Schreibt den Dateinamen klein unter jedes Foto">
+                <input type="checkbox" id="showCaptionsCheckbox" />
+                <span>Dateinamen unter Fotos</span>
               </label>
             </div>
           </div>
@@ -315,55 +399,36 @@
       </div>
     </section>
 
-    <!-- Right Column: Live Double-Sided Sheet Preview & Export -->
+    <!-- Right Column: SCHRITT 3 — Vorschau & Speichern/Drucken -->
     <section class="preview-column">
       <div class="card preview-card">
         <div class="preview-header">
-          <div>
-            <h2>Live-Vorschau (Doppelseitiges PDF)</h2>
-            <p class="preview-subtitle" id="previewDimText">1 doppelseitiges Querformat-Blatt (Seite 1: Vorderseite, Seite 2: Rückseite)</p>
+          <div class="step-title-row">
+            <span class="step-circle step-circle-green">3</span>
+            <div>
+              <h2>Schritt 3: Fertige DIN-A4-Blätter prüfen &amp; speichern</h2>
+              <p class="preview-subtitle" id="previewDimText">So sehen Ihre fertigen DIN-A4-Seiten beim Ausdrucken aus</p>
+            </div>
           </div>
           <div class="preview-actions">
-            <button id="downloadPdfBtn" class="btn btn-primary" type="button">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button id="downloadPdfBtn" class="btn btn-primary btn-lg" type="button">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              Kombiniertes PDF herunterladen
+              Fertiges PDF speichern
             </button>
-            <button id="openPdfTabBtn" class="btn btn-outline" type="button" title="Erstelltes PDF zum Drucken in einem neuen Tab öffnen">
-              PDF drucken / öffnen
+            <button id="openPdfTabBtn" class="btn btn-outline" type="button" title="Öffnet das fertige PDF in einem neuen Browser-Tab, damit Sie es direkt ausdrucken können">
+              🖨️ Zum Drucken öffnen
             </button>
           </div>
         </div>
 
         <div id="statusBanner" class="status-banner" hidden></div>
 
-        <!-- Front & Back Sheet Canvas Previews -->
-        <div class="sheets-container">
-          <!-- Page 1: FRONT -->
-          <div class="sheet-wrapper">
-            <div class="sheet-label-bar">
-              <span class="sheet-tag front-tag">SEITE 1 — VORDERSEITE</span>
-              <span class="sheet-meta" id="frontMetaLabel">Links: PDF-Seite 1 • Rechts: PDF-Seite 2</span>
-            </div>
-            <div class="sheet-stage">
-              <canvas id="frontSheetCanvas" class="sheet-canvas"></canvas>
-            </div>
-          </div>
-
-          <!-- Page 2: BACKSIDE -->
-          <div class="sheet-wrapper">
-            <div class="sheet-label-bar">
-              <span class="sheet-tag back-tag">SEITE 2 — RÜCKSEITE</span>
-              <span class="sheet-meta" id="backMetaLabel">Links: PDF-Seite 3 • Rechts: Rückseitenbild</span>
-            </div>
-            <div class="sheet-stage">
-              <canvas id="backSheetCanvas" class="sheet-canvas"></canvas>
-            </div>
-          </div>
-        </div>
+        <!-- Dynamically generated DIN A4 Sheet Previews -->
+        <div id="sheetsContainer" class="sheets-container"></div>
       </div>
     </section>
   </main>
